@@ -167,5 +167,5 @@ SafeVoice is built using modern web technologies such as **React (TypeScript)**,
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/your-username/safevoice.git
+git clone https://github.com/luyandaaaa/SafeVoice.git
 cd safevoice
