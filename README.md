@@ -1,73 +1,171 @@
-# Welcome to your Lovable project
+# 🛡️ SafeVoice
 
-## Project info
+**SafeVoice** is a secure, multilingual, and AI-powered web-based platform designed to support individuals in vulnerable situations — offering tools for safety, legal assistance, evidence management, and community engagement.
 
-**URL**: https://lovable.dev/projects/7ff8dfde-8771-4181-b611-74881a703c86
+![SafeVoice Banner](./imagecopy8.png) <!-- Replace with actual path or URL -->
 
-## How can I edit this code?
+---
 
-There are several ways of editing your application.
+## 🌐 Project Overview
 
-**Use Lovable**
+SafeVoice is built using modern web technologies such as **React (TypeScript)**, **Vite**, and **Tailwind CSS** to deliver a responsive, user-friendly experience. It provides users with access to critical features like biometric login, incident reporting, evidence vaults, legal support, USSD offline access, and AI-powered chat.
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/7ff8dfde-8771-4181-b611-74881a703c86) and start prompting.
+---
 
-Changes made via Lovable will be committed automatically to this repo.
+## ✨ Key Features
 
-**Use your preferred IDE**
+### 🧑‍💻 1. User Interface
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+- Modular UI Components: `src/components/ui/`
+- Main layout: `SafeVoiceLayout.tsx`
+- Navigation Sidebar: `Sidebar.tsx`
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+---
 
-Follow these steps:
+### 🔐 2. Authentication & Security
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+- `AuthPage.tsx`: Handles user login and registration
+- `BiometricLogin.tsx`: Biometric authentication
+- `MFASetup.tsx`: Multi-Factor Authentication setup
+- `USSDOfflineModeButton.tsx`: USSD support for offline access
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+---
 
-# Step 3: Install the necessary dependencies.
-npm i
+### 🗣️ 3. Chat & Community Support
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
+- `AIChat.tsx`: AI-powered chat assistant
+- `Community.tsx`: Forum for user interaction and support
+
+---
+
+### 📊 4. Dashboard & Incident Reporting
+
+- `Dashboard.tsx`: Central user dashboard
+- `ReportIncident.tsx`: Submit reports with location, description, and media
+
+---
+
+### 🔒 5. Evidence Management
+
+- `EvidenceVault.tsx`: Secure vault for storing evidence (documents, images, audio, etc.)
+- `assets/`: PDFs, crime documentation, and protection guides
+
+---
+
+### ⚖️ 6. Legal Assistance
+
+- `LegalAssistance.tsx`: Access legal resources, hotlines, and documentation
+
+---
+
+### 🗺️ 7. Mapping & Safety Tools
+
+- `ARMap.tsx` & `SafetyMap.tsx`: Augmented Reality and Safety maps
+- `USSDModal.tsx`: Interactive USSD-based safety features
+
+---
+
+### 🎮 8. Resources & Gamification
+
+- `GBVGamificationPlatform.tsx`: Gamified learning on GBV awareness
+- `Resources.tsx`: Educational content, helplines, and guides
+
+---
+
+### ⚙️ 9. Settings & Preferences
+
+- `Settings.tsx`: Manage user preferences including language, theme, and voice features
+
+---
+
+## 🧠 Context Providers & Hooks
+
+- `AuthContext.tsx`, `LanguageContext.tsx`, `VoiceContext.tsx`
+- Custom Hooks: `use-mobile.tsx`, `use-toast.ts`
+- Utilities: `utils.ts`
+
+---
+
+## 🌍 Routing & Pages
+
+- `index.tsx`: Main landing page
+- `NotFound.tsx`: 404 page
+- Static HTML: AR demo, presentations, standalone evidence viewer, etc.
+
+---
+
+## ⚙️ Configuration & Build Tools
+
+- **Vite** – Fast bundler: `vite.config.ts`
+- **Tailwind CSS** – Utility-first styling: `tailwind.config.ts`
+- **TypeScript** – Strong typing: `tsconfig.json`
+- **ESLint** – Linting rules and code quality
+
+---
+
+## 📁 Project Structure
+
+```
+├── public/
+│ ├── favicon.ico
+│ ├── logo.png
+│ ├── fonts/
+│ └── robots.txt
+│
+├── src/
+│ ├── components/
+│ ├── pages/
+│ ├── contexts/
+│ ├── hooks/
+│ ├── utils/
+│ └── assets/
+│
+├── tailwind.config.ts
+├── vite.config.ts
+└── tsconfig.json
 ```
 
-**Edit a file directly in GitHub**
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+---
 
-**Use GitHub Codespaces**
+## 💻 Technology Stack
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+| Tech            | Purpose                                |
+|-----------------|----------------------------------------|
+| React (TS)      | Frontend framework                     |
+| Vite            | Lightning-fast build tool              |
+| Tailwind CSS    | Styling with utility classes           |
+| Context API     | Global state management                |
+| Biometric Auth  | Secure user login                      |
+| USSD Support    | Offline access for feature phones      |
+| AI Chat         | Smart assistance & guidance            |
+| Maps (AR & Safety) | Location-based awareness & response |
 
-## What technologies are used for this project?
+---
 
-This project is built with:
+## 📸 Screenshots
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+| Feature              | Screenshot                           |
+|----------------------|--------------------------------------|
+| Dashboard            | ![Dashboard](./image.png) |
+| Incident Reporting   | ![Report](./imagecopy.png).      |
+| Evidence Vault       | ![Vault](./imagecopy3.png).               |
+| Legal Assistance     | ![Legal](./imagecopy4.png).       |
+| AI Chat              | ![Chat](./imagecopy6.png).         |
+| Safety Map           | ![Chat](./imagecopy2.png).                |
+| Resources            | ![Chat](./imagecopy5.png).                |
+| Community            | ![Chat](./imagecopy6.png).                |
 
-## How can I deploy this project?
 
-Simply open [Lovable](https://lovable.dev/projects/7ff8dfde-8771-4181-b611-74881a703c86) and click on Share -> Publish.
 
-## Can I connect a custom domain to my Lovable project?
 
-Yes, you can!
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+---
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+## 🚀 Getting Started
+
+### 1. Clone the Repository
+
+```bash
+git clone https://github.com/your-username/safevoice.git
+cd safevoice
