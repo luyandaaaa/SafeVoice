@@ -1,67 +1,54 @@
-// db.js
-
 const { MongoClient, ServerApiVersion } = require('mongodb');
 require('dotenv').config();
 
 const uri = process.env.MONGODB_URI;
+let db = null;
+let dbInitializing = null;
 
 const client = new MongoClient(uri, {
   serverApi: {
     version: ServerApiVersion.v1,
-    strict: true,
+    strict: false, // Disabled strict mode to allow text indexes
     deprecationErrors: true,
   }
 });
 
-let dbConnection = null;
-
-/**
- * Connect to MongoDB and return the database connection
- */
 async function connectDB() {
   try {
-    if (dbConnection) {
-      // Reuse existing connection
-      return dbConnection;
+    if (!db) {
+      if (!dbInitializing) {
+        dbInitializing = client.connect()
+          .then(() => {
+            console.log('Connected to MongoDB');
+            db = client.db('safevoice');
+            return db;
+          })
+          .catch(err => {
+            console.error('Error connecting to MongoDB:', err);
+            dbInitializing = null;
+            throw err;
+          });
+      }
+      await dbInitializing;
     }
-
-    // Connect to MongoDB cluster
-    await client.connect();
-
-    // Connect to the actual app database
-    dbConnection = client.db("safevoice");
-
-    // Optional: Ping to verify connection
-    await dbConnection.command({ ping: 1 });
-    console.log("✅ Successfully connected to MongoDB Atlas (safevoice)");
-
-    return dbConnection;
-  } catch (error) {
-    console.error("❌ MongoDB Connection Error:", error);
-    throw error;
+    return db;
+  } catch (err) {
+    console.error('Error connecting to MongoDB:', err);
+    throw err;
   }
 }
 
-/**
- * Get the database connection (after connectDB has been called)
- */
 function getDb() {
-  if (!dbConnection) {
-    throw new Error("Database not connected. Call connectDB() first.");
+  if (!db) {
+    throw new Error('Database not initialized. Call connectDB() first.');
   }
-  return dbConnection;
+  return db;
 }
 
-/**
- * Optional helper: Get a specific collection directly
- */
-function getCollection(name) {
-  return getDb().collection(name);
-}
+// Initialize connection
+connectDB().catch(console.error);
 
 module.exports = {
   connectDB,
-  getDb,
-  getCollection, // optional helper
-  client,
+  getDb
 };

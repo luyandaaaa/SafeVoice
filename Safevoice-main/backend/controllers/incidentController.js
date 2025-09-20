@@ -5,18 +5,38 @@ const Incident = require('../models/Incident');
 // @access  Private
 exports.createIncident = async (req, res) => {
   try {
-    const { type, description, location, evidenceFiles } = req.body;
+    const {
+      type,
+      urgency,
+      date,
+      time,
+      location,
+      description,
+      perpetrator,
+      witnesses,
+      notes,
+      anonymous,
+      consent,
+      status
+    } = req.body;
     
-    const incident = new Incident({
+    const result = await Incident.create({
       userId: req.user.id,
       type,
-      description,
+      urgency,
+      date,
+      time,
       location,
-      evidenceFiles
+      description,
+      perpetrator,
+      witnesses,
+      notes,
+      anonymous,
+      consent,
+      status: status || 'submitted'
     });
 
-    const savedIncident = await incident.save();
-    res.json(savedIncident);
+    res.json(result);
   } catch (err) {
     console.error(err.message);
     res.status(500).send('Server Error');
@@ -28,7 +48,7 @@ exports.createIncident = async (req, res) => {
 // @access  Private
 exports.getIncidents = async (req, res) => {
   try {
-    const incidents = await Incident.find({ userId: req.user.id }).sort({ createdAt: -1 });
+    const incidents = await Incident.findByUserId(req.user.id);
     res.json(incidents);
   } catch (err) {
     console.error(err.message);
@@ -43,15 +63,8 @@ exports.updateIncident = async (req, res) => {
   try {
     const { type, description, location, status } = req.body;
     
-    // Build incident object
-    const incidentFields = {};
-    if (type) incidentFields.type = type;
-    if (description) incidentFields.description = description;
-    if (location) incidentFields.location = location;
-    if (status) incidentFields.status = status;
-    incidentFields.updatedAt = Date.now();
-
-    let incident = await Incident.findById(req.params.id);
+    // Get the incident first
+    const incident = await Incident.findById(req.params.id);
     
     if (!incident) {
       return res.status(404).json({ msg: 'Incident not found' });
@@ -62,13 +75,13 @@ exports.updateIncident = async (req, res) => {
       return res.status(401).json({ msg: 'Not authorized' });
     }
 
-    incident = await Incident.findByIdAndUpdate(
-      req.params.id,
-      { $set: incidentFields },
-      { new: true }
-    );
+    // Update the incident
+    const updatedIncident = await Incident.updateById(req.params.id, {
+      ...req.body,
+      updatedAt: new Date()
+    });
 
-    res.json(incident);
+    res.json(updatedIncident);
   } catch (err) {
     console.error(err.message);
     res.status(500).send('Server Error');
@@ -91,7 +104,7 @@ exports.deleteIncident = async (req, res) => {
       return res.status(401).json({ msg: 'Not authorized' });
     }
 
-    await incident.deleteOne();
+    await Incident.deleteById(req.params.id);
     res.json({ msg: 'Incident removed' });
   } catch (err) {
     console.error(err.message);

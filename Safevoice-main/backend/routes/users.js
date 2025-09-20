@@ -1,36 +1,41 @@
 const express = require('express');
 const router = express.Router();
-const { getCollection } = require('../config/db');
-const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
+const auth = require('../middleware/auth');
+const Report = require('../models/Report');
+const Evidence = require('../models/Evidence');
 const { ObjectId } = require('mongodb');
 
-// Auth middleware
-const validateToken = async (req, res, next) => {
+// @route   GET api/users/stats
+// @desc    Get user's dashboard stats
+// @access  Private
+router.get('/stats', auth, async (req, res) => {
   try {
-    const token = req.headers.authorization?.split(' ')[1];
-    
-    if (!token) {
-      return res.status(401).json({ error: 'Access denied. No token provided.' });
-    }
+    const userId = req.user.id;
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    const users = getCollection('users');
-    const user = await users.findOne({ _id: ObjectId(decoded.id) });
+    // Get report stats
+    const reportStats = await Report.getUserStats(userId);
     
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
-    }
+    // Get evidence stats using the exported getUserStats function
+    const evidenceStats = await Evidence.getUserStats(userId);
 
-    req.user = user;
-    next();
-  } catch (error) {
-    res.status(401).json({ error: 'Invalid token' });
+    res.json({
+      activeAlerts: reportStats.activeAlerts || 0,
+      totalReports: reportStats.totalReports || 0,
+      safeLocations: 0,
+      riskAreas: 0,
+      communityMembers: 0,
+      averageResponseTime: "0 min",
+      totalEvidence: evidenceStats.totalEvidence || 0,
+      privateEvidence: evidenceStats.privateEvidence || 0
+    });
+  } catch (err) {
+    console.error('Error getting user stats:', err);
+    res.status(500).send('Server error');
   }
-};
+});
 
 // Update profile route
-router.put('/profile', validateToken, async (req, res) => {
+router.put('/profile', auth, async (req, res) => {
   try {
     const users = getCollection('users');
     const { name, email, phone } = req.body;
@@ -75,7 +80,7 @@ router.put('/profile', validateToken, async (req, res) => {
 });
 
 // Get profile route
-router.get('/profile', validateToken, async (req, res) => {
+router.get('/profile', auth, async (req, res) => {
   try {
     const { password, ...userWithoutPassword } = req.user;
     res.json(userWithoutPassword);

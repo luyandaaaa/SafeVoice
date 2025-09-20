@@ -71,11 +71,6 @@ export const ReportIncident = () => {
   const audioInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    // Load saved reports from localStorage
-    const saved = localStorage.getItem('safevoice_reports');
-    if (saved) {
-      setSavedReports(JSON.parse(saved));
-    }
     // Auto-fill date & time
     const now = new Date();
     setReport(prev => ({
@@ -155,23 +150,50 @@ export const ReportIncident = () => {
     }));
   };
 
-  const saveAsDraft = () => {
-    const draftReport: IncidentReport = {
-      ...report,
-      id: report.id || `draft-${Date.now()}`,
-      status: 'draft'
-    };
-    const updatedReports = savedReports.filter(r => r.id !== draftReport.id);
-    updatedReports.push(draftReport);
-    setSavedReports(updatedReports);
-    localStorage.setItem('safevoice_reports', JSON.stringify(updatedReports));
-    setShowNewReportForm(false);
-    setLoadedDraftId(null);
-    toast({
-      title: "Draft saved",
-      description: "Your report has been saved as a draft",
-      variant: "default"
-    });
+  const saveAsDraft = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('Not authenticated');
+      }
+
+      const draftReport = {
+        ...report,
+        id: report.id || `draft-${Date.now()}`,
+        status: 'draft'
+      };
+
+      const response = await fetch('http://localhost:5000/api/reports', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-auth-token': token
+        },
+        body: JSON.stringify(draftReport)
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to save draft');
+      }
+
+      setShowNewReportForm(false);
+      setLoadedDraftId(null);
+      toast({
+        title: "Draft saved",
+        description: "Your report has been saved as a draft",
+        variant: "default"
+      });
+
+      // Refresh reports list
+      loadReports();
+    } catch (error) {
+      console.error('Error saving draft:', error);
+      toast({
+        title: "Error",
+        description: "Failed to save draft",
+        variant: "destructive"
+      });
+    }
   };
 
   const submitReport = async () => {
@@ -183,9 +205,18 @@ export const ReportIncident = () => {
       });
       return;
     }
+    
     setIsSubmitting(true);
     const chainId = `INC-2025-${Math.floor(Math.random()*1000).toString().padStart(3,'0')}`;
-    setTimeout(() => {
+    
+    try {
+      // Get token for authentication
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('Not authenticated');
+      }
+
+      // Prepare report data
       const submittedReport: IncidentReport = {
         ...report,
         id: chainId,
@@ -194,16 +225,34 @@ export const ReportIncident = () => {
         consent: report.consent,
         progress: report.progress
       };
-      const updatedReports = savedReports.filter(r => r.id !== report.id);
-      updatedReports.push(submittedReport);
-      setSavedReports(updatedReports);
-      localStorage.setItem('safevoice_reports', JSON.stringify(updatedReports));
+
+      // Submit to backend
+      const response = await fetch('http://localhost:5000/api/reports', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-auth-token': token
+        },
+        body: JSON.stringify(submittedReport)
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to submit report');
+      }
+
+      toast({
+        title: "Report submitted",
+        description: "Your report has been successfully submitted",
+        variant: "default"
+      });
+
+      // Reset form
       setReport({
         id: '',
         type: '',
         urgency: '',
-        date: '',
-        time: '',
+        date: new Date().toISOString().slice(0, 10),
+        time: new Date().toTimeString().slice(0, 5),
         location: '',
         description: '',
         perpetrator: '',
@@ -215,30 +264,86 @@ export const ReportIncident = () => {
         consent: { vault: false, ngo: false, court: false },
         progress: 0
       });
-      setIsSubmitting(false);
+    } catch (error) {
+      console.error('Error submitting report:', error);
+      toast({
+        title: "Error",
+        description: "Failed to submit report. Please try again.",
+        variant: "destructive"
+      });
       setCaseId(chainId);
       setShowNewReportForm(false);
       setLoadedDraftId(null);
-      toast({
-        title: "Report submitted",
-        description: `Your report has been saved securely. Case ID: ${chainId}`,
-        variant: "default"
-      });
+      
       if (isVoiceEnabled) {
         speak("Your report has been saved securely. Case ID: " + chainId);
       }
-    }, 2000);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
-  const loadDraft = (draft: IncidentReport) => {
-    setReport(draft);
-    setShowNewReportForm(true);
-    setLoadedDraftId(draft.id);
-    toast({
-      title: "Draft loaded",
-      description: "Draft report loaded for editing",
-      variant: "default"
-    });
+  // Load user's reports from database
+  const loadReports = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+
+      const response = await fetch('http://localhost:5000/api/reports', {
+        headers: {
+          'x-auth-token': token
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setSavedReports(data);
+      }
+    } catch (error) {
+      console.error('Error loading reports:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load reports",
+        variant: "destructive"
+      });
+    }
+  };
+
+  // Load reports when component mounts
+  useEffect(() => {
+    loadReports();
+  }, []);
+
+  const loadDraft = async (draftId: string) => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+
+      const response = await fetch(`http://localhost:5000/api/reports/${draftId}`, {
+        headers: {
+          'x-auth-token': token
+        }
+      });
+
+      if (response.ok) {
+        const draft = await response.json();
+        setReport(draft);
+        setShowNewReportForm(true);
+        setLoadedDraftId(draft.id);
+        toast({
+          title: "Draft loaded",
+          description: "Draft report loaded for editing",
+          variant: "default"
+        });
+      }
+    } catch (error) {
+      console.error('Error loading draft:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load draft",
+        variant: "destructive"
+      });
+    }
   };
 
   const handleViewDetails = (report: IncidentReport) => {
@@ -246,14 +351,41 @@ export const ReportIncident = () => {
     setShowDetails(true);
   };
 
-  const handleDeleteReport = (id: string) => {
-    const updated = savedReports.filter(r => r.id !== id);
-    setSavedReports(updated);
-    localStorage.setItem('safevoice_reports', JSON.stringify(updated));
-    setShowNewReportForm(false);
-    setLoadedDraftId(null);
-    setShowDetails(false);
-    toast({ title: "Report deleted", description: `Case ID ${id} deleted.` });
+  const handleDeleteReport = async (id: string) => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+
+      const response = await fetch(`http://localhost:5000/api/reports/${id}`, {
+        method: 'DELETE',
+        headers: {
+          'x-auth-token': token
+        }
+      });
+
+      if (response.ok) {
+        // Remove from UI state
+        setSavedReports(prev => prev.filter(r => r.id !== id));
+        setShowNewReportForm(false);
+        setLoadedDraftId(null);
+        setShowDetails(false);
+        toast({
+          title: "Report deleted",
+          description: `Case ID ${id} deleted.`,
+          variant: "default"
+        });
+
+        // Refresh reports list
+        loadReports();
+      }
+    } catch (error) {
+      console.error('Error deleting report:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete report",
+        variant: "destructive"
+      });
+    }
   };
 
   return (
@@ -353,7 +485,7 @@ export const ReportIncident = () => {
                         {draft.description ? `${draft.description.substring(0, 50)}...` : 'No description'}
                       </p>
                     </div>
-                    <Button onClick={() => loadDraft(draft)} variant="outline" size="sm">
+                    <Button onClick={() => loadDraft(draft.id)} variant="outline" size="sm">
                       Load Draft
                     </Button>
                   </div>

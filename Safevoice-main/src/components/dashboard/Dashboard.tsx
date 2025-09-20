@@ -39,18 +39,51 @@ interface QuickAction {
 }
 
 export const Dashboard = () => {
+  const { user } = useAuth();
   const [stats, setStats] = useState<DashboardStats>({
-    activeAlerts: 3,
-    reportsSubmitted: 12,
-    safeLocations: 28,
-    riskAreas: 5,
-    communityMembers: 1247,
-    responseTime: "2.3 min"
+    activeAlerts: 0,
+    reportsSubmitted: 0,
+    safeLocations: 0,
+    riskAreas: 0,
+    communityMembers: 0,
+    responseTime: "0 min"
   });
+
+  // Fetch user's stats when dashboard loads
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        if (!token) return;
+
+        const response = await fetch('http://localhost:5000/api/users/stats', {
+          headers: {
+            'x-auth-token': token
+          }
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          setStats(prevStats => ({
+            ...prevStats,
+            activeAlerts: data.activeAlerts || 0,
+            reportsSubmitted: data.totalReports || 0,
+            safeLocations: data.safeLocations || 0,
+            riskAreas: data.riskAreas || 0,
+            communityMembers: data.communityMembers || 0,
+            responseTime: data.averageResponseTime || "0 min"
+          }));
+        }
+      } catch (error) {
+        console.error('Error fetching stats:', error);
+      }
+    };
+
+    fetchStats();
+  }, [user?._id]);
 
   const { t } = useLanguage();
   const { speak, isVoiceEnabled } = useVoice();
-  const { user } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {

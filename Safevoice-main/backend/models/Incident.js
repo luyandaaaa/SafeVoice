@@ -1,72 +1,79 @@
-const { getDb } = require('../config/db');
+const { getDb, connectDB } = require('../config/db');
 const { ObjectId } = require('mongodb');
 
-// Get incidents collection
-const getIncidents = () => {
-  const db = getDb();
-  return db.collection('incidents');
-};
+let incidents = null;
 
-// Create indexes when initializing
-async function createIndexes() {
-  const incidents = getIncidents();
-  await incidents.createIndex({ location: '2dsphere' });
-  await incidents.createIndex({ userId: 1 });
+// Initialize collection and indexes
+async function initializeCollection() {
+  if (!incidents) {
+    await connectDB();
+    const db = getDb();
+    incidents = db.collection('incidents');
+    await incidents.createIndex({ 'location.coordinates': '2dsphere' });
+    await incidents.createIndex({ 'location.address': 1 }); // Regular index instead of text
+    await incidents.createIndex({ userId: 1 });
+    console.log('Incident indexes created');
+  }
+  return incidents;
 }
 
-module.exports = {
-  // Create a new incident
-  async create(incidentData) {
-    const incidents = getIncidents();
-    const newIncident = {
-      ...incidentData,
-      userId: new ObjectId(incidentData.userId),
-      status: 'pending',
-      createdAt: new Date(),
-      updatedAt: new Date(),
-      location: {
-        type: 'Point',
-        coordinates: incidentData.location.coordinates || [0, 0]
-      },
-      evidenceFiles: incidentData.evidenceFiles || []
-    };
-    return await incidents.insertOne(newIncident);
-  },
+// Initialize the collection
+initializeCollection().catch(console.error);
 
-  // Find incident by ID
-  async findById(id) {
-    const incidents = getIncidents();
-    return await incidents.findOne({ _id: new ObjectId(id) });
-  },
+exports.create = async (data) => {
+  const collection = await initializeCollection();
+  const incident = {
+    userId: new ObjectId(data.userId),
+    type: data.type,
+    urgency: data.urgency,
+    date: data.date,
+    time: data.time,
+    // Store both GeoJSON for spatial queries and text location for display
+    location: {
+      type: 'Point',
+      coordinates: data.coordinates || [0, 0], // [longitude, latitude]
+      address: data.location || '' // Text description of location
+    },
+    description: data.description,
+    perpetrator: data.perpetrator || '',
+    witnesses: data.witnesses || '',
+    notes: data.notes || '',
+    anonymous: data.anonymous || false,
+    consent: data.consent || { vault: false, ngo: false, court: false },
+    status: data.status || 'submitted',
+    createdAt: new Date(),
+    updatedAt: new Date()
+  };
 
-  // Find incidents by user ID
-  async findByUserId(userId) {
-    const incidents = getIncidents();
-    return await incidents.find({ userId: new ObjectId(userId) }).toArray();
-  },
+  const result = await collection.insertOne(incident);
+  return { ...incident, _id: result.insertedId };
+};
 
-  // Update incident
-  async updateById(id, updateData) {
-    const incidents = getIncidents();
-    updateData.updatedAt = new Date();
-    return await incidents.updateOne(
-      { _id: new ObjectId(id) },
-      { $set: updateData }
-    );
-  },
+exports.findById = async (id) => {
+  const collection = await initializeCollection();
+  return await collection.findOne({ _id: new ObjectId(id) });
+};
 
-  // Delete incident
-  async deleteById(id) {
-    const incidents = getIncidents();
-    return await incidents.deleteOne({ _id: new ObjectId(id) });
-  },
+exports.findByUserId = async (userId) => {
+  const collection = await initializeCollection();
+  return await collection
+    .find({ userId: new ObjectId(userId) })
+    .sort({ createdAt: -1 })
+    .toArray();
+};
 
-  // Get all incidents
-  async getAll() {
-    const incidents = getIncidents();
-    return await incidents.find({}).toArray();
-  },
+exports.updateById = async (id, data) => {
+  const collection = await initializeCollection();
+  const result = await collection.findOneAndUpdate(
+    { _id: new ObjectId(id) },
+    { $set: { ...data, updatedAt: new Date() } },
+    { returnDocument: 'after' }
+  );
+  return result;
+};
 
-  // Initialize function to create indexes
-  initialize: createIndexes
+exports.deleteById = async (id) => {
+  const collection = await initializeCollection();
+  const result = await collection.deleteOne({ _id: new ObjectId(id) });
+  return result.deletedCount === 1;
 };

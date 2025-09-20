@@ -11,6 +11,16 @@ dotenv.config();
 // Create Express app
 const app = express();
 
+// Connect to MongoDB
+connectDB()
+  .then(() => {
+    console.log('MongoDB connected successfully');
+  })
+  .catch((err) => {
+    console.error('MongoDB connection error:', err);
+    process.exit(1);
+  });
+
 // Middleware
 app.use(cors());
 app.use(express.json());
@@ -77,7 +87,18 @@ async function startServer() {
     console.log('✅ Database indexes created');
     
     // Start server
-    app.listen(PORT, () => {
+    const server = app.listen(PORT).on('error', (err) => {
+      if (err.code === 'EADDRINUSE') {
+        console.log(`Port ${PORT} is busy. Trying port ${PORT + 1}...`);
+        app.listen(PORT + 1, () => {
+          console.log(`🚀 Server running on http://localhost:${PORT + 1}`);
+          console.log(`📊 Health check: http://localhost:${PORT + 1}/api/health`);
+        });
+      } else {
+        console.error('Server error:', err);
+        process.exit(1);
+      }
+    }).on('listening', () => {
       console.log(`🚀 Server running on http://localhost:${PORT}`);
       console.log(`📊 Health check: http://localhost:${PORT}/api/health`);
       console.log('📝 Available routes:');

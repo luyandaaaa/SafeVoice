@@ -7,24 +7,50 @@ const getEvidence = () => {
   return db.collection('evidence');
 };
 
-// Create indexes when initializing
+// Create indexes
 async function createIndexes() {
   const evidence = getEvidence();
   await evidence.createIndex({ userId: 1 });
-  await evidence.createIndex({ incidentId: 1 });
+  await evidence.createIndex({ reportId: 1 });
+  await evidence.createIndex({ createdAt: -1 });
+}
+
+// Get user's evidence stats
+async function getUserStats(userId) {
+  const evidence = getEvidence();
+  const stats = await evidence.aggregate([
+    { $match: { userId: new ObjectId(userId) } },
+    {
+      $group: {
+        _id: null,
+        totalEvidence: { $sum: 1 },
+        privateEvidence: {
+          $sum: {
+            $cond: [{ $eq: ["$status", "private"] }, 1, 0]
+          }
+        }
+      }
+    }
+  ]).toArray();
+
+  return stats[0] || { totalEvidence: 0, privateEvidence: 0 };
 }
 
 module.exports = {
+  getUserStats,
   // Create new evidence
   async create(evidenceData) {
     const evidence = getEvidence();
     const newEvidence = {
       ...evidenceData,
       userId: new ObjectId(evidenceData.userId),
-      incidentId: new ObjectId(evidenceData.incidentId),
-      createdAt: new Date()
+      reportId: new ObjectId(evidenceData.reportId),
+      status: evidenceData.status || 'private',
+      createdAt: new Date(),
+      updatedAt: new Date()
     };
-    return await evidence.insertOne(newEvidence);
+    const result = await evidence.insertOne(newEvidence);
+    return { ...newEvidence, _id: result.insertedId };
   },
 
   // Find evidence by ID
