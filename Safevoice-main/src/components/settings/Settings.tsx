@@ -11,7 +11,7 @@ import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useVoice } from "@/contexts/VoiceContext";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 
 interface UserSettings {
@@ -95,7 +95,7 @@ export const Settings = () => {
   const [activeTab, setActiveTab] = useState('profile');
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   
-  const { user, updateProfile } = useAuth();
+  const { user } = useAuth();
   const { currentLanguage, setLanguage } = useLanguage();
   const { isVoiceEnabled, toggleVoice } = useVoice();
   const { toast } = useToast();
@@ -133,7 +133,7 @@ export const Settings = () => {
     setHasUnsavedChanges(true);
   };
 
-  const saveSettings = () => {
+  const saveSettings = async () => {
     localStorage.setItem('safevoice_settings', JSON.stringify(settings));
     
     // Update user profile if changed
@@ -142,11 +142,44 @@ export const Settings = () => {
       user.email !== settings.profile.email ||
       user.phone !== settings.profile.phone
     )) {
-      updateProfile({
-        name: settings.profile.name,
-        email: settings.profile.email,
-        phone: settings.profile.phone
-      });
+      try {
+        const response = await fetch('http://localhost:5000/api/users/profile', {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          },
+          body: JSON.stringify({
+            name: settings.profile.name,
+            email: settings.profile.email,
+            phone: settings.profile.phone
+          })
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Failed to update profile');
+        }
+
+        const updatedUser = await response.json();
+        // Update the user in local storage
+        localStorage.setItem('user', JSON.stringify(updatedUser));
+        
+        setHasUnsavedChanges(false);
+        toast({
+          title: "Profile updated",
+          description: "Your profile has been updated successfully",
+          variant: "default"
+        });
+      } catch (error) {
+        console.error('Profile update error:', error);
+        toast({
+          title: "Update failed",
+          description: error.message || "Failed to update profile. Please try again.",
+          variant: "destructive"
+        });
+        return; // Don't proceed with saving other settings if profile update failed
+      }
     }
 
     setHasUnsavedChanges(false);

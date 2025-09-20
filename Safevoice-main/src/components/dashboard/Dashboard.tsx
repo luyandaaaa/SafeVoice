@@ -16,7 +16,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Progress } from "@/components/ui/progress";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useVoice } from "@/contexts/VoiceContext";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 
@@ -189,10 +189,10 @@ export const Dashboard = () => {
       <div className="mt-6 mb-6">
         <div className="rounded-lg border border-primary bg-primary/10 px-6 py-4 shadow-sm">
           <h1 className="text-3xl font-bold tracking-tight">
-            {t('welcome_back')}, {user?.name}
+            {t('welcome_back')}, {user?.name || t('user')}
           </h1>
           <p className="text-muted-foreground">
-            {t('dashboard_subtitle')}
+            {user ? t('dashboard_subtitle') : t('loading_dashboard')}
           </p>
         </div>
       </div>

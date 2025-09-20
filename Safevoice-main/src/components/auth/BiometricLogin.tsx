@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Fingerprint, Scan, Camera } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/hooks/useAuth";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useVoice } from "@/contexts/VoiceContext";
 import { useToast } from "@/hooks/use-toast";
@@ -25,7 +25,7 @@ export const BiometricLogin = () => {
     try {
       // Simulate biometric scanning delay
       await new Promise(resolve => setTimeout(resolve, 2000));
-      const success = await loginWithBiometric(type);
+      const success = await loginWithBiometric({ type, biometricToken: 'simulated-token' });
       if (success) {
         toast({
           title: t("biometric_success"),

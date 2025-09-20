@@ -4,7 +4,7 @@ import { Shield, Menu, LogOut, Volume2, VolumeX } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useVoice } from "@/contexts/VoiceContext";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/hooks/useAuth";
 import { Sidebar } from "@/components/Sidebar";
 import { cn } from "@/lib/utils";
 
