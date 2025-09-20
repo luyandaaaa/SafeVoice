@@ -1,0 +1,799 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Johannesburg GBV Safety Map</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        #map {
+            width: 100vw;
+            height: 100vh;
+        }
+        
+        .info-panel {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 1000;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            backdrop-filter: blur(5px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            max-width: 300px;
+        }
+        
+        .safety-status {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        
+        .safety-indicator {
+            width: 15px;
+            height: 15px;
+            border-radius: 50%;
+            margin-right: 10px;
+            box-shadow: 0 0 10px;
+        }
+        
+        .safe { background: #4CAF50; box-shadow: 0 0 10px #4CAF50; }
+        .caution { background: #FFC107; box-shadow: 0 0 10px #FFC107; }
+        .warning { background: #FF9800; box-shadow: 0 0 10px #FF9800; }
+        .danger { background: #F44336; box-shadow: 0 0 10px #F44336; }
+        
+        .emergency-btn {
+            background: linear-gradient(45deg, #ff4444, #cc0000);
+            border: none;
+            color: white;
+            padding: 12px 24px;
+            font-size: 16px;
+            font-weight: bold;
+            border-radius: 30px;
+            cursor: pointer;
+            width: 100%;
+            margin-top: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .legend {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            z-index: 1000;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 12px;
+            backdrop-filter: blur(5px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin: 5px 0;
+        }
+        
+        .legend-color {
+            width: 12px;
+            height: 12px;
+            border-radius: 3px;
+            margin-right: 8px;
+        }
+        
+        .notification {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 10px 15px;
+            border-radius: 5px;
+            max-width: 250px;
+            display: none;
+            backdrop-filter: blur(5px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            animation: slideIn 0.3s forwards;
+        }
+        
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        
+        .pulse {
+            animation: pulse 1.5s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 68, 68, 0.7); }
+            70% { transform: scale(1.05); box-shadow: 0 0 0 10px rgba(255, 68, 68, 0); }
+            100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 68, 68, 0); }
+        }
+        
+        .zone-popup {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 300px;
+        }
+        
+        .zone-popup h3 {
+            margin: 5px 0;
+            color: #333;
+            font-size: 18px;
+        }
+        
+        .zone-popup .level {
+            font-weight: bold;
+            margin: 5px 0;
+            font-size: 16px;
+        }
+        
+        .safe-popup .level { color: #4CAF50; }
+        .caution-popup .level { color: #FFC107; }
+        .warning-popup .level { color: #FF9800; }
+        .danger-popup .level { color: #F44336; }
+        
+        .gbv-info {
+            background-color: #fff8f8;
+            padding: 8px;
+            border-radius: 4px;
+            margin: 8px 0;
+            border-left: 4px solid #F44336;
+        }
+        
+        .gbv-info h4 {
+            margin: 0 0 5px 0;
+            color: #d32f2f;
+        }
+        
+        .gbv-info ul {
+            margin: 5px 0;
+            padding-left: 20px;
+        }
+        
+        .resources {
+            margin-top: 10px;
+            font-size: 14px;
+        }
+        
+        .resources a {
+            color: #1976d2;
+            text-decoration: none;
+        }
+        
+        .loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 15px 25px;
+            border-radius: 5px;
+            z-index: 1001;
+            backdrop-filter: blur(5px);
+        }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+    <button onclick="window.location.href='/map'" style="position: absolute; top: 20px; right: 20px; z-index: 2000; background: #fff; color: #333; border: 1px solid #ccc; border-radius: 8px; padding: 8px 16px; font-size: 16px; cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
+      ← Back 
+    </button>
+    
+    <div class="info-panel">
+        <h3>GBV Safety Status</h3>
+        <div class="safety-status">
+            <span class="safety-indicator safe" id="safety-indicator"></span>
+            <span id="safety-text">SAFE AREA</span>
+        </div>
+        <div style="font-size: 14px; margin: 5px 0;">
+            Location: <span id="location-text">Locating...</span>
+        </div>
+        <div style="font-size: 12px; margin: 5px 0; opacity: 0.8;">
+            Last update: <span id="time-text">Just now</span>
+        </div>
+        <button class="emergency-btn pulse" id="emergency-btn">🚨 GBV EMERGENCY</button>
+    </div>
+    
+    <div class="legend">
+        <h4 style="margin: 0 0 5px 0;">GBV Risk Levels</h4>
+        <div class="legend-item">
+            <div class="legend-color" style="background: #4CAF50;"></div>
+            <span>Low Risk</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color" style="background: #FFC107;"></div>
+            <span>Moderate Risk</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color" style="background: #FF9800;"></div>
+            <span>High Risk</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color" style="background: #F44336;"></div>
+            <span>Extreme Risk</span>
+        </div>
+    </div>
+    
+    <div class="notification" id="notification"></div>
+    
+    <div class="loading" id="loading">Getting your location...</div>
+
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+    <script>
+        // Johannesburg coordinates (fallback)
+        const johannesburgCoords = [-26.2041, 28.0473];
+        let userLocation = null;
+        let map;
+        let userMarker;
+        let watchId;
+        
+        // GBV-focused safety data for Johannesburg neighborhoods
+        const gbvSafetyZones = [
+            {
+                name: "Sandton Central",
+                coords: [-26.1076, 28.0567],
+                radius: 800,
+                level: 0, // safe
+                description: "Financial district with high security presence. Generally safe for women with private security patrols.",
+                gbvInfo: {
+                    riskFactors: ["Low police reports of GBV", "Good lighting at night", "Regular security patrols"],
+                    precautions: ["Still be aware of surroundings at night", "Avoid isolated parking areas"],
+                    stats: "GBV incidents: 2 reported per month (low)"
+                },
+                resources: ["Sandton SAPS: 011 722 4200", "Sandton Victim Support: 011 722 4300"]
+            },
+            {
+                name: "Rosebank",
+                coords: [-26.1449, 28.0431],
+                radius: 700,
+                level: 0, // safe
+                description: "Commercial area with good security. Safe during business hours with many people around.",
+                gbvInfo: {
+                    riskFactors: ["Some incidents reported in parking garages", "Busy area during day becomes quiet at night"],
+                    precautions: ["Use well-lit parking areas", "Ask mall security for escort if leaving late"],
+                    stats: "GBV incidents: 3 reported per month (low-moderate)"
+                },
+                resources: ["Rosebank SAPS: 011 442 8600", "GBV Helpline: 0800 428 428"]
+            },
+            {
+                name: "Braamfontein",
+                coords: [-26.1928, 28.0306],
+                radius: 600,
+                level: 1, // caution
+                description: "Student area with nightlife. Increased risk at night, especially near clubs.",
+                gbvInfo: {
+                    riskFactors: ["Alcohol-related incidents", "Reports of drink spiking", "Poor lighting in some areas"],
+                    precautions: ["Travel in groups at night", "Watch drinks carefully", "Use trusted transport"],
+                    stats: "GBV incidents: 8 reported per month (moderate)"
+                },
+                resources: ["Braamfontein SAPS: 011 339 1300", "Student Safety Line: 0800 222 777"]
+            },
+            {
+                name: "Hillbrow",
+                coords: [-26.1945, 28.0446],
+                radius: 900,
+                level: 3, // danger
+                description: "High GBV risk area. Numerous reports of assaults and harassment.",
+                gbvInfo: {
+                    riskFactors: ["Extremely high GBV reports", "Building hijackings common", "Drug-related crime", "Poor police response"],
+                    precautions: ["Avoid after dark", "Do not walk alone at any time", "Use secure transport if essential"],
+                    stats: "GBV incidents: 25+ reported per month (very high)"
+                },
+                resources: ["Hillbrow SAPS: 011 720 6700", "GBV Command Centre: 0800 428 428"]
+            },
+            {
+                name: "Johannesburg CBD",
+                coords: [-26.2041, 28.0473],
+                radius: 1200,
+                level: 2, // warning
+                description: "City center with high pedestrian traffic but GBV risks, especially at night.",
+                gbvInfo: {
+                    riskFactors: ["Pickpocketing and harassment", "Some reports of assaults", "Beggars can be aggressive"],
+                    precautions: ["Stay in well-populated areas", "Avoid shortcuts through buildings", "Be cautious with ATMs"],
+                    stats: "GBV incidents: 15 reported per month (high)"
+                },
+                resources: ["Johannesburg Central SAPS: 011 497 7000", "People Opposed to Woman Abuse: 011 642 4345"]
+            },
+            {
+                name: "Soweto (Orlando West)",
+                coords: [-26.2485, 27.9088],
+                radius: 1500,
+                level: 1, // caution
+                description: "Residential township with some GBV risks, especially in isolated areas.",
+                gbvInfo: {
+                    riskFactors: ["Domestic violence reports", "Some street harassment", "Limited police resources"],
+                    precautions: ["Travel with trusted locals if possible", "Avoid walking at night", "Know safe spaces"],
+                    stats: "GBV incidents: 10 reported per month (moderate-high)"
+                },
+                resources: ["Orlando SAPS: 011 536 9100", "Soweto Women's Shelter: 011 984 4294"]
+            },
+            {
+                name: "Alexandra",
+                coords: [-26.1030, 28.1129],
+                radius: 1000,
+                level: 3, // danger
+                description: "High-density township with extreme GBV risks. Many unreported cases.",
+                gbvInfo: {
+                    riskFactors: ["Extremely high GBV prevalence", "Limited police presence", "Cultural stigma against reporting", "High unemployment contributing to crime"],
+                    precautions: ["Avoid unless with trusted locals", "Never walk alone", "Have emergency contacts ready"],
+                    stats: "GBV incidents: 30+ reported per month (extremely high, with likely underreporting)"
+                },
+                resources: ["Alexandra SAPS: 011 321 7600", "GBV Emergency Line: 0800 428 428"]
+            },
+            {
+                name: "Melville",
+                coords: [-26.1705, 28.0028],
+                radius: 500,
+                level: 1, // caution
+                description: "Popular nightlife area with alcohol-related GBV risks.",
+                gbvInfo: {
+                    riskFactors: ["Drink spiking reported", "Bar-related harassment", "Risk when walking to transport at night"],
+                    precautions: ["Watch drinks carefully", "Use buddy system", "Pre-arrange transport"],
+                    stats: "GBV incidents: 6 reported per month (moderate)"
+                },
+                resources: ["Melville SAPS: 011 482 5700", "Rape Crisis: 011 642 4345"]
+            },
+            {
+                name: "Maboneng Precinct",
+                coords: [-26.2026, 28.0409],
+                radius: 400,
+                level: 1, // caution
+                description: "Arts district that becomes quiet at night with some GBV risks.",
+                gbvInfo: {
+                    riskFactors: ["Isolated areas after events", "Some reports of harassment", "Limited security at night"],
+                    precautions: ["Leave before complete darkness", "Stay in groups", "Use reputable transport"],
+                    stats: "GBV incidents: 5 reported per month (moderate)"
+                },
+                resources: ["Jeppe SAPS: 011 614 9700", "GBV Helpline: 0800 428 428"]
+            },
+            {
+                name: "Parktown",
+                coords: [-26.1842, 28.0265],
+                radius: 600,
+                level: 0, // safe
+                description: "Historic residential area with good security and low GBV reports.",
+                gbvInfo: {
+                    riskFactors: ["Occasional domestic incidents", "Some risk in isolated streets"],
+                    precautions: ["Normal precautions apply", "Be cautious when jogging alone"],
+                    stats: "GBV incidents: 2 reported per month (low)"
+                },
+                resources: ["Parkview SAPS: 011 646 9200", "Domestic Violence Helpline: 0800 150 150"]
+            }
+        ];
+        
+        // Colors for different safety levels
+        const zoneColors = {
+            0: '#4CAF50', // safe
+            1: '#FFC107', // caution
+            2: '#FF9800', // warning
+            3: '#F44336'  // danger
+        };
+        
+        // Initialize map and get user location
+        function initMap() {
+            map = L.map('map').setView(johannesburgCoords, 13);
+            
+            // Add OpenStreetMap tiles
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            }).addTo(map);
+            
+            // Add GBV safety zones to map
+            addSafetyZones();
+            
+            // Try to get user's current location
+            if (navigator.geolocation) {
+                document.getElementById('loading').textContent = "Getting your location...";
+                
+                // First try to get immediate position
+                navigator.geolocation.getCurrentPosition(
+                    position => {
+                        userLocation = [position.coords.latitude, position.coords.longitude];
+                        setupUserMarker();
+                        document.getElementById('loading').style.display = 'none';
+                        startWatchingPosition();
+                    },
+                    error => {
+                        console.error("Error getting location:", error);
+                        document.getElementById('loading').textContent = "Using Johannesburg default location";
+                        userLocation = johannesburgCoords;
+                        setTimeout(() => {
+                            document.getElementById('loading').style.display = 'none';
+                        }, 2000);
+                        setupUserMarker();
+                    },
+                    { timeout: 10000 }
+                );
+            } else {
+                document.getElementById('loading').textContent = "Geolocation not supported - using Johannesburg";
+                userLocation = johannesburgCoords;
+                setTimeout(() => {
+                    document.getElementById('loading').style.display = 'none';
+                }, 2000);
+                setupUserMarker();
+            }
+        }
+        
+        // Continuously watch user's position
+        function startWatchingPosition() {
+            if (navigator.geolocation) {
+                watchId = navigator.geolocation.watchPosition(
+                    position => {
+                        userLocation = [position.coords.latitude, position.coords.longitude];
+                        updateUserLocation();
+                    },
+                    error => {
+                        console.error("Error watching position:", error);
+                    },
+                    { 
+                        enableHighAccuracy: true,
+                        maximumAge: 10000,
+                        timeout: 5000
+                    }
+                );
+            }
+        }
+        
+        // Add safety zones to map with GBV information
+        function addSafetyZones() {
+            gbvSafetyZones.forEach(zone => {
+                const circle = L.circle(zone.coords, {
+                    color: zoneColors[zone.level],
+                    fillColor: zoneColors[zone.level],
+                    fillOpacity: 0.3,
+                    radius: zone.radius
+                }).addTo(map);
+                
+                // Create detailed GBV popup content
+                const popupClass = [
+                    'zone-popup',
+                    zone.level === 0 ? 'safe-popup' : 
+                    zone.level === 1 ? 'caution-popup' : 
+                    zone.level === 2 ? 'warning-popup' : 'danger-popup'
+                ].join(' ');
+                
+                const levelText = [
+                    'Low GBV Risk', 'Moderate GBV Risk', 'High GBV Risk', 'Extreme GBV Risk'
+                ][zone.level];
+                
+                // Create GBV risk factors list
+                const riskFactorsList = zone.gbvInfo.riskFactors.map(factor => 
+                    `<li>${factor}</li>`
+                ).join('');
+                
+                // Create precautions list
+                const precautionsList = zone.gbvInfo.precautions.map(precaution => 
+                    `<li>${precaution}</li>`
+                ).join('');
+                
+                // Create resources list
+                const resourcesList = zone.resources.map(resource => 
+                    `<li>${resource}</li>`
+                ).join('');
+                
+                const popupContent = `
+                    <div class="${popupClass}">
+                        <h3>${zone.name}</h3>
+                        <div class="level">${levelText}</div>
+                        <p>${zone.description}</p>
+                        
+                        <div class="gbv-info">
+                            <h4>GBV Risk Information</h4>
+                            <p><strong>Statistics:</strong> ${zone.gbvInfo.stats}</p>
+                            
+                            <h4>Risk Factors:</h4>
+                            <ul>${riskFactorsList}</ul>
+                            
+                            <h4>Safety Precautions:</h4>
+                            <ul>${precautionsList}</ul>
+                        </div>
+                        
+                        <div class="resources">
+                            <h4>Emergency Resources:</h4>
+                            <ul>${resourcesList}</ul>
+                        </div>
+                    </div>
+                `;
+                
+                circle.bindPopup(popupContent);
+            });
+        }
+        
+        // Set up user marker
+        function setupUserMarker() {
+            if (userMarker) {
+                map.removeLayer(userMarker);
+            }
+            
+            userMarker = L.circleMarker(userLocation, {
+                radius: 8,
+                fillColor: "#0066ff",
+                color: "#fff",
+                weight: 2,
+                opacity: 1,
+                fillOpacity: 0.8
+            }).addTo(map);
+            
+            // Center map on user
+            map.setView(userLocation, 15);
+            
+            // Update UI with initial location
+            updateSafetyStatus();
+            updateLocationText();
+        }
+        
+        // Update user location marker
+        function updateUserLocation() {
+            if (!userMarker) return;
+            
+            userMarker.setLatLng(userLocation);
+            pulseUserMarker();
+            
+            // Update safety status
+            updateSafetyStatus();
+            updateLocationText();
+            
+            // Update time
+            const now = new Date();
+            document.getElementById('time-text').textContent = now.toLocaleTimeString();
+            
+            // Pan map to follow user (if zoomed in)
+            if (map.getZoom() > 14) {
+                map.panTo(userLocation);
+            }
+        }
+        
+        // Pulse effect for user marker
+        function pulseUserMarker() {
+            userMarker.setRadius(8);
+            setTimeout(() => {
+                userMarker.setRadius(12);
+                setTimeout(() => {
+                    userMarker.setRadius(8);
+                }, 500);
+            }, 500);
+        }
+        
+        // Update location text with neighborhood name
+        function updateLocationText() {
+            let locationName = "Unknown location";
+            let closestZone = null;
+            let minDistance = Infinity;
+            
+            gbvSafetyZones.forEach(zone => {
+                const distance = map.distance(userLocation, zone.coords);
+                if (distance < minDistance) {
+                    minDistance = distance;
+                    closestZone = zone;
+                }
+            });
+            
+            if (closestZone && minDistance < closestZone.radius * 1.5) {
+                locationName = `Near ${closestZone.name}`;
+            } else {
+                locationName = `${userLocation[0].toFixed(4)}, ${userLocation[1].toFixed(4)}`;
+            }
+            
+            document.getElementById('location-text').textContent = locationName;
+        }
+        
+        // Update safety status based on current location
+        function updateSafetyStatus() {
+            let currentZone = null;
+            let highestRisk = 0;
+            
+            gbvSafetyZones.forEach(zone => {
+                const distance = map.distance(userLocation, zone.coords);
+                
+                if (distance <= zone.radius && zone.level >= highestRisk) {
+                    highestRisk = zone.level;
+                    currentZone = zone;
+                }
+            });
+            
+            // Update UI
+            const indicator = document.getElementById('safety-indicator');
+            const text = document.getElementById('safety-text');
+            const levels = ['safe', 'caution', 'warning', 'danger'];
+            const levelText = [
+                'LOW GBV RISK', 
+                'MODERATE GBV RISK', 
+                'HIGH GBV RISK', 
+                'EXTREME GBV RISK'
+            ];
+            
+            indicator.className = `safety-indicator ${levels[highestRisk]}`;
+            text.textContent = levelText[highestRisk];
+            
+            // Show warning if in danger zone
+            if (highestRisk >= 2) {
+                showNotification(
+                    `GBV WARNING: ${levelText[highestRisk]} area - ${currentZone?.name || ''}`, 
+                    highestRisk === 3 ? 'danger' : 'warning'
+                );
+                
+                // Flash the zone if in danger
+                if (highestRisk === 3 && currentZone) {
+                    flashZone(currentZone);
+                }
+            }
+        }
+        
+        // Flash a zone (visual alert)
+        function flashZone(zone) {
+            // Find all elements with zone name (for demo we'll just show popup)
+            const popupContent = `
+                <div style="padding: 10px; background: #fff8f8; border-left: 4px solid #F44336;">
+                    <h3 style="margin: 0 0 5px 0; color: #d32f2f;">GBV WARNING!</h3>
+                    <p>You are in an Extreme GBV Risk area (${zone.name}).</p>
+                    <p><strong>${zone.gbvInfo.stats}</strong></p>
+                    <p>Emergency contacts:</p>
+                    <ul style="padding-left: 20px;">
+                        ${zone.resources.map(r => `<li>${r}</li>`).join('')}
+                    </ul>
+                </div>
+            `;
+            
+            // Create temporary popup
+            L.popup()
+                .setLatLng(userLocation)
+                .setContent(popupContent)
+                .openOn(map);
+            
+            // Close after 7 seconds
+            setTimeout(() => {
+                map.closePopup();
+            }, 7000);
+        }
+        
+        // Show notification
+        function showNotification(message, type = 'info') {
+            const notification = document.getElementById('notification');
+            notification.textContent = message;
+            notification.style.display = 'block';
+            notification.style.backgroundColor = 
+                type === 'danger' ? 'rgba(244, 67, 54, 0.9)' :
+                type === 'warning' ? 'rgba(255, 152, 0, 0.9)' :
+                'rgba(0, 150, 255, 0.9)';
+            
+            setTimeout(() => {
+                notification.style.animation = 'slideIn 0.3s reverse forwards';
+                setTimeout(() => {
+                    notification.style.display = 'none';
+                    notification.style.animation = 'slideIn 0.3s forwards';
+                }, 300);
+            }, 5000);
+        }
+        
+        // --- AR Safe Routing Logic ---
+        let arRoutingActive = false;
+        let arRouteTarget = null;
+        function calculateAndShowSafeRoute() {
+            // 1. Find nearest safe place (police, shelter, or GBV help, level 0 or 1)
+            const safeZones = gbvSafetyZones.filter(z => (
+                (z.name.toLowerCase().includes('police') || z.name.toLowerCase().includes('shelter') || z.resources.some(r => r.toLowerCase().includes('saps') || r.toLowerCase().includes('shelter') || r.toLowerCase().includes('help') || r.toLowerCase().includes('support') || r.toLowerCase().includes('crisis')))
+                && z.level <= 1
+            ));
+            let nearestSafe = null;
+            let minDist = Infinity;
+            safeZones.forEach(zone => {
+                const dist = map.distance(userLocation, zone.coords);
+                if (dist < minDist) {
+                    minDist = dist;
+                    nearestSafe = zone;
+                }
+            });
+            if (!nearestSafe) {
+                showNotification('No safe place found for routing.', 'warning');
+                return;
+            }
+            arRouteTarget = nearestSafe;
+            // 2. Avoid danger zones (level 2 or 3)
+            const avoidZones = gbvSafetyZones.filter(z => z.level >= 2);
+            // 3. Build a simple route: user -> waypoint (if needed) -> safe place
+            let route = [userLocation];
+            avoidZones.forEach(zone => {
+                const midpoint = [
+                    (userLocation[0] + nearestSafe.coords[0]) / 2,
+                    (userLocation[1] + nearestSafe.coords[1]) / 2
+                ];
+                const userIn = map.distance(userLocation, zone.coords) < zone.radius;
+                const destIn = map.distance(nearestSafe.coords, zone.coords) < zone.radius;
+                const midIn = map.distance(midpoint, zone.coords) < zone.radius;
+                if (userIn || destIn || midIn) {
+                    const angle = Math.atan2(nearestSafe.coords[0] - userLocation[0], nearestSafe.coords[1] - userLocation[1]);
+                    const detour = [
+                        zone.coords[0] + 0.015 * Math.cos(angle + Math.PI/2),
+                        zone.coords[1] + 0.015 * Math.sin(angle + Math.PI/2)
+                    ];
+                    route.push(detour);
+                }
+            });
+            route.push(nearestSafe.coords);
+            // Remove previous route if any
+            if (window._arRouteLine) {
+                map.removeLayer(window._arRouteLine);
+            }
+            window._arRouteLine = L.polyline(route, { color: '#1976d2', weight: 6, opacity: 0.8, dashArray: '10,10' }).addTo(map);
+            // Mark destination
+            if (window._arRouteDest) {
+                map.removeLayer(window._arRouteDest);
+            }
+            window._arRouteDest = L.marker(nearestSafe.coords, {
+                icon: L.icon({
+                    iconUrl: 'https://cdn-icons-png.flaticon.com/512/3062/3062634.png',
+                    iconSize: [36, 36],
+                    iconAnchor: [18, 36]
+                })
+            }).addTo(map).bindPopup(`<b>Safe Place</b><br>${nearestSafe.name}`);
+            map.fitBounds(L.latLngBounds(route));
+            showNotification('AR Safe Route shown: Head to the nearest safe place. Avoid danger zones!', 'info');
+        }
+
+        document.getElementById('emergency-btn').addEventListener('click', function() {
+            const levels = ['safe', 'caution', 'warning', 'danger'];
+            const currentLevel = document.getElementById('safety-indicator').className.split(' ')[2];
+            const levelIndex = levels.indexOf(currentLevel);
+            // Find current zone
+            let currentZone = null;
+            gbvSafetyZones.forEach(zone => {
+                const distance = map.distance(userLocation, zone.coords);
+                if (distance <= zone.radius) {
+                    currentZone = zone;
+                }
+            });
+            // Build emergency message
+            let emergencyMsg = "GBV EMERGENCY ACTIVATED!\n\n";
+            emergencyMsg += `Your location: ${userLocation[0].toFixed(6)}, ${userLocation[1].toFixed(6)}\n`;
+            if (currentZone) {
+                emergencyMsg += `Area: ${currentZone.name} (${[
+                    'Low Risk', 'Moderate Risk', 'High Risk', 'Extreme Risk'
+                ][currentZone.level]})\n\n`;
+                emergencyMsg += "Local resources:\n";
+                currentZone.resources.forEach(res => {
+                    emergencyMsg += `- ${res}\n`;
+                });
+            }
+            emergencyMsg += "\nHelp is on the way! Stay safe.";
+            alert(emergencyMsg);
+            const originalColor = userMarker.options.fillColor;
+            userMarker.setStyle({ fillColor: '#ff0000' });
+            setTimeout(() => { userMarker.setStyle({ fillColor: originalColor }); }, 5000);
+            showNotification("GBV Emergency reported! Authorities alerted. Calculating safe route...", 'danger');
+            arRoutingActive = true;
+            calculateAndShowSafeRoute();
+        });
+
+        // Update AR route in real time as user moves
+        function updateARRouteOnMove() {
+            if (arRoutingActive) {
+                calculateAndShowSafeRoute();
+            }
+        }
+
+        // Patch into geolocation update
+        const origUpdateUserLocation = updateUserLocation;
+        updateUserLocation = function() {
+            origUpdateUserLocation();
+            updateARRouteOnMove();
+        }
+        
+        // Initialize the map when page loads
+        window.onload = initMap;
+    </script>
+</body>
+</html>

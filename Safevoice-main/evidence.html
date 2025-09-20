@@ -1,0 +1,1857 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GBV Evidence Vault | AI-Powered Case Management</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        :root {
+            --primary: #3b82f6;
+            --primary-dark: #2563eb;
+            --danger: #ef4444;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --info: #06b6d4;
+        }
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f9fafb;
+        }
+        
+        .file-card {
+            transition: all 0.2s ease;
+        }
+        
+        .file-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        }
+        
+        .progress-bar {
+            transition: width 0.5s ease;
+        }
+        
+        .risk-critical { background-color: #ef4444; }
+        .risk-high { background-color: #f59e0b; }
+        .risk-medium { background-color: #fbbf24; }
+        .risk-low { background-color: #10b981; }
+        
+        .priority-urgent { background-color: #fee2e2; color: #b91c1c; border-color: #fecaca; }
+        .priority-high { background-color: #ffedd5; color: #9a3412; border-color: #fed7aa; }
+        .priority-medium { background-color: #fef3c7; color: #92400e; border-color: #fde68a; }
+        .priority-low { background-color: #d1fae5; color: #065f46; border-color: #a7f3d0; }
+        
+        .type-image { color: #3b82f6; }
+        .type-video { color: #8b5cf6; }
+        .type-audio { color: #10b981; }
+        .type-document { color: #f59e0b; }
+        
+        .badge-pulse {
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+        }
+        
+        .gamification-progress {
+            height: 8px;
+            border-radius: 4px;
+            background-color: #e5e7eb;
+        }
+        
+        .gamification-progress-fill {
+            height: 100%;
+            border-radius: 4px;
+            background: linear-gradient(90deg, #3b82f6, #8b5cf6);
+            transition: width 0.5s ease;
+        }
+        
+        .achievement-card {
+            opacity: 0.5;
+            transition: all 0.3s ease;
+        }
+        
+        .achievement-card.unlocked {
+            opacity: 1;
+            transform: scale(1.05);
+            box-shadow: 0 10px 15px -3px rgba(59, 130, 246, 0.3);
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        .evidence-timeline::before {
+            content: '';
+            position: absolute;
+            left: 9px;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background-color: #e5e7eb;
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <div class="max-w-7xl mx-auto px-4 py-8 space-y-8">
+        <!-- Header -->
+        <div class="space-y-2">
+            <h1 class="text-4xl font-bold tracking-tight flex items-center gap-3">
+                <i class="fas fa-shield-alt text-blue-500 text-4xl"></i>
+                GBV Evidence Vault
+                <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800 border border-blue-200">
+                    <i class="fas fa-brain mr-1"></i>
+                    AI Enhanced
+                </span>
+            </h1>
+            <p class="text-lg text-gray-600">
+                Secure evidence management with intelligent analysis for GBV cases
+            </p>
+        </div>
+
+        <!-- Gamification Progress -->
+        <div class="bg-white rounded-lg shadow p-6">
+            <div class="flex items-center justify-between mb-2">
+                <h3 class="font-medium text-gray-900">Your Advocacy Progress</h3>
+                <span class="text-sm font-medium text-blue-600">Level 3 - Advocate</span>
+            </div>
+            <div class="gamification-progress mb-2">
+                <div class="gamification-progress-fill" style="width: 65%"></div>
+            </div>
+            <div class="flex justify-between text-sm text-gray-500">
+                <span>150/230 XP</span>
+                <span>Next level: 80 XP needed</span>
+            </div>
+            
+            <div class="grid grid-cols-5 gap-4 mt-6">
+                <div class="achievement-card unlocked p-3 bg-white border rounded-lg text-center">
+                    <div class="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-2 text-blue-600">
+                        <i class="fas fa-upload"></i>
+                    </div>
+                    <p class="text-xs font-medium">First Upload</p>
+                </div>
+                <div class="achievement-card unlocked p-3 bg-white border rounded-lg text-center">
+                    <div class="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-2 text-green-600">
+                        <i class="fas fa-check-double"></i>
+                    </div>
+                    <p class="text-xs font-medium">Verified 5 Files</p>
+                </div>
+                <div class="achievement-card p-3 bg-white border rounded-lg text-center">
+                    <div class="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-2 text-purple-600">
+                        <i class="fas fa-share-alt"></i>
+                    </div>
+                    <p class="text-xs font-medium">Share Evidence</p>
+                </div>
+                <div class="achievement-card unlocked p-3 bg-white border rounded-lg text-center">
+                    <div class="w-12 h-12 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-2 text-yellow-600">
+                        <i class="fas fa-chart-line"></i>
+                    </div>
+                    <p class="text-xs font-medium">Complete Analysis</p>
+                </div>
+                <div class="achievement-card p-3 bg-white border rounded-lg text-center">
+                    <div class="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-2 text-red-600">
+                        <i class="fas fa-flag"></i>
+                    </div>
+                    <p class="text-xs font-medium">Report Case</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Stats -->
+        <div class="grid gap-4 md:grid-cols-4 lg:grid-cols-6">
+            <div class="bg-white rounded-lg shadow p-4 relative overflow-hidden">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm font-medium text-gray-500">Total Files</p>
+                        <p class="text-2xl font-bold" id="total-files">12</p>
+                    </div>
+                    <i class="fas fa-database text-blue-500 text-3xl"></i>
+                </div>
+            </div>
+            
+            <div class="bg-white rounded-lg shadow p-4">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm font-medium text-gray-500">High Priority</p>
+                        <p class="text-2xl font-bold text-red-600" id="high-priority">3</p>
+                    </div>
+                    <i class="fas fa-exclamation-triangle text-red-500 text-3xl"></i>
+                </div>
+            </div>
+            
+            <div class="bg-white rounded-lg shadow p-4">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm font-medium text-gray-500">AI Verified</p>
+                        <p class="text-2xl font-bold text-green-600" id="verified-files">8</p>
+                    </div>
+                    <i class="fas fa-check-circle text-green-500 text-3xl"></i>
+                </div>
+            </div>
+            
+            <div class="bg-white rounded-lg shadow p-4">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm font-medium text-gray-500">Total Size</p>
+                        <p class="text-2xl font-bold" id="total-size">156.4 MB</p>
+                    </div>
+                    <i class="fas fa-cloud-upload-alt text-purple-500 text-3xl"></i>
+                </div>
+            </div>
+            
+            <div class="bg-white rounded-lg shadow p-4">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm font-medium text-gray-500">Shared</p>
+                        <p class="text-2xl font-bold" id="shared-files">5</p>
+                    </div>
+                    <i class="fas fa-share text-orange-500 text-3xl"></i>
+                </div>
+            </div>
+            
+            <div class="bg-white rounded-lg shadow p-4">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm font-medium text-gray-500">Active Cases</p>
+                        <p class="text-2xl font-bold" id="active-cases">2</p>
+                    </div>
+                    <i class="fas fa-users text-indigo-500 text-3xl"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tabs Navigation -->
+        <div class="bg-white rounded-lg shadow">
+            <div class="grid grid-cols-4">
+                <button class="tab-btn py-3 px-4 text-center font-medium border-b-2 border-blue-500 text-blue-600" data-tab="overview">
+                    Overview
+                </button>
+                <button class="tab-btn py-3 px-4 text-center font-medium text-gray-500 hover:text-gray-700" data-tab="upload">
+                    Upload Evidence
+                </button>
+                <button class="tab-btn py-3 px-4 text-center font-medium text-gray-500 hover:text-gray-700" data-tab="cases">
+                    Case Management
+                </button>
+                <button class="tab-btn py-3 px-4 text-center font-medium text-gray-500 hover:text-gray-700" data-tab="analytics">
+                    AI Analytics
+                </button>
+            </div>
+        </div>
+
+        <!-- Tab Contents -->
+        <div class="tab-content active" id="overview-tab">
+            <!-- Search and Filters -->
+            <div class="bg-white rounded-lg shadow p-4 mb-6">
+                <div class="grid gap-4 md:grid-cols-5">
+                    <div class="relative md:col-span-2">
+                        <i class="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+                        <input
+                            type="text"
+                            placeholder="Search files, descriptions, tags..."
+                            class="pl-9 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            id="search-query"
+                        >
+                    </div>
+                    <select class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" id="case-filter">
+                        <option value="all">All Cases</option>
+                        <option value="case-1">Domestic Violence #2024-001</option>
+                        <option value="case-2">Workplace Harassment</option>
+                    </select>
+                    <select class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" id="type-filter">
+                        <option value="all">All Types</option>
+                        <option value="image">Images</option>
+                        <option value="video">Videos</option>
+                        <option value="audio">Audio</option>
+                        <option value="recording">Recordings</option>
+                        <option value="screenshot">Screenshots</option>
+                        <option value="document">Documents</option>
+                    </select>
+                    <select class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" id="priority-filter">
+                        <option value="all">All Priorities</option>
+                        <option value="urgent">Urgent</option>
+                        <option value="high">High</option>
+                        <option value="medium">Medium</option>
+                        <option value="low">Low</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Evidence Files Grid -->
+            <div class="bg-white rounded-lg shadow overflow-hidden">
+                <div class="p-4 border-b flex items-center justify-between">
+                    <h3 class="font-bold flex items-center gap-2">
+                        <i class="fas fa-file-alt"></i>
+                        Evidence Files
+                    </h3>
+                    <span class="px-3 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                        <span id="filtered-count">3</span> of <span id="total-count">12</span> files
+                    </span>
+                </div>
+                <div class="p-4">
+                    <div id="no-files-message" class="text-center py-12 hidden">
+                        <i class="fas fa-database text-4xl text-gray-400 mb-4"></i>
+                        <h3 class="text-xl font-semibold mb-2">No evidence files found</h3>
+                        <p class="text-gray-500 mb-4">
+                            Upload your first evidence file to get started with AI-powered analysis
+                        </p>
+                        <button class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors" onclick="switchTab('upload')">
+                            <i class="fas fa-upload mr-2"></i>
+                            Upload Evidence
+                        </button>
+                    </div>
+                    
+                    <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3" id="files-grid">
+                        <!-- Files will be dynamically inserted here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="tab-content" id="upload-tab">
+            <!-- Quick Upload Options -->
+            <div class="grid gap-4 md:grid-cols-4 mb-6">
+                <button class="h-20 flex flex-col items-center justify-center gap-2 bg-white rounded-lg shadow border border-gray-200 hover:border-blue-300 hover:bg-blue-50 transition-colors" onclick="triggerFileUpload('image/*')">
+                    <i class="fas fa-camera text-blue-500 text-2xl"></i>
+                    <span class="text-sm">Upload Photos</span>
+                </button>
+                <button class="h-20 flex flex-col items-center justify-center gap-2 bg-white rounded-lg shadow border border-gray-200 hover:border-purple-300 hover:bg-purple-50 transition-colors" onclick="triggerFileUpload('video/*')">
+                    <i class="fas fa-video text-purple-500 text-2xl"></i>
+                    <span class="text-sm">Upload Videos</span>
+                </button>
+                <button class="h-20 flex flex-col items-center justify-center gap-2 bg-white rounded-lg shadow border border-gray-200 hover:border-green-300 hover:bg-green-50 transition-colors" onclick="triggerFileUpload('audio/*')">
+                    <i class="fas fa-microphone text-green-500 text-2xl"></i>
+                    <span class="text-sm">Upload Audio</span>
+                </button>
+                <button class="h-20 flex flex-col items-center justify-center gap-2 bg-white rounded-lg shadow border border-gray-200 hover:border-yellow-300 hover:bg-yellow-50 transition-colors" onclick="triggerFileUpload('.pdf,.doc,.docx')">
+                    <i class="fas fa-file-alt text-yellow-500 text-2xl"></i>
+                    <span class="text-sm">Upload Documents</span>
+                </button>
+            </div>
+
+            <!-- Main Upload Area -->
+            <div class="bg-white rounded-lg shadow overflow-hidden">
+                <div class="p-4 border-b">
+                    <h3 class="font-bold flex items-center gap-2">
+                        <i class="fas fa-shield-alt text-blue-500"></i>
+                        Secure Evidence Upload
+                        <span class="px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 border border-green-200">
+                            <i class="fas fa-lock mr-1"></i>
+                            Auto-Encrypted
+                        </span>
+                    </h3>
+                    <p class="text-gray-600 text-sm mt-1">
+                        All files are automatically encrypted and analyzed by AI for evidence integrity and relevance
+                    </p>
+                </div>
+                <div class="p-6">
+                    <div class="border-2 border-dashed border-gray-300 rounded-lg p-12 text-center">
+                        <i class="fas fa-cloud-upload-alt text-4xl text-gray-400 mb-4"></i>
+                        <h3 class="text-xl font-semibold mb-2">Drag & Drop Evidence Files</h3>
+                        <p class="text-gray-500 mb-6">
+                            Supported: Images, Videos, Audio, Screenshots, Documents (Max 100MB per file)
+                        </p>
+                        
+                        <div class="space-y-4">
+                            <div class="flex items-center justify-center gap-4">
+                                <select class="w-64 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" id="case-assignment">
+                                    <option value="all">No case assignment</option>
+                                    <option value="case-1">Domestic Violence #2024-001</option>
+                                    <option value="case-2">Workplace Harassment</option>
+                                </select>
+                            </div>
+                            
+                            <input
+                                type="file"
+                                id="file-upload"
+                                multiple
+                                accept="image/*,video/*,audio/*,.pdf,.doc,.docx"
+                                class="hidden"
+                            >
+                            <button 
+                                class="px-6 py-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors text-lg"
+                                onclick="document.getElementById('file-upload').click()"
+                            >
+                                <i class="fas fa-plus mr-2"></i>
+                                Select Files to Upload
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Upload Progress -->
+                    <div id="upload-progress-container" class="mt-6 space-y-4 hidden">
+                        <h4 class="font-medium">Upload Progress</h4>
+                        <div id="upload-progress-items">
+                            <!-- Progress items will be added here -->
+                        </div>
+                    </div>
+
+                    <!-- Upload Tips -->
+                    <div class="mt-6 p-4 bg-blue-50 rounded-lg">
+                        <h4 class="font-medium text-blue-900 mb-2 flex items-center gap-2">
+                            <i class="fas fa-brain"></i>
+                            AI-Enhanced Upload Tips
+                        </h4>
+                        <ul class="text-sm text-blue-800 space-y-1">
+                            <li><i class="fas fa-circle text-xs mr-2"></i> Clear, high-resolution images provide better analysis results</li>
+                            <li><i class="fas fa-circle text-xs mr-2"></i> Include original timestamps and location data when possible</li>
+                            <li><i class="fas fa-circle text-xs mr-2"></i> Audio recordings with minimal background noise are analyzed more accurately</li>
+                            <li><i class="fas fa-circle text-xs mr-2"></i> Screenshots should include full context (headers, timestamps, etc.)</li>
+                            <li><i class="fas fa-circle text-xs mr-2"></i> Documents in text format (PDF, DOC) allow for better content extraction</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="tab-content" id="cases-tab">
+            <!-- Case Creation -->
+            <div class="bg-white rounded-lg shadow overflow-hidden mb-6">
+                <div class="p-4 border-b">
+                    <h3 class="font-bold flex items-center gap-2">
+                        <i class="fas fa-plus text-blue-500"></i>
+                        Create New Case
+                    </h3>
+                </div>
+                <div class="p-4">
+                    <div class="flex gap-4">
+                        <input
+                            type="text"
+                            placeholder="Enter case title..."
+                            class="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            id="new-case-title"
+                        >
+                        <button class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors" id="create-case-btn">
+                            <i class="fas fa-plus mr-2"></i>
+                            Create Case
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Cases Grid -->
+            <div class="bg-white rounded-lg shadow overflow-hidden">
+                <div class="p-4 border-b">
+                    <h3 class="font-bold">Active Cases</h3>
+                    <p class="text-gray-600 text-sm mt-1">Manage evidence collections by case</p>
+                </div>
+                <div class="p-4">
+                    <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3" id="cases-grid">
+                        <!-- Cases will be dynamically inserted here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="tab-content" id="analytics-tab">
+            <!-- Analytics Dashboard -->
+            <div class="grid gap-6 md:grid-cols-2 mb-6">
+                <div class="bg-white rounded-lg shadow overflow-hidden">
+                    <div class="p-4 border-b">
+                        <h3 class="font-bold flex items-center gap-2">
+                            <i class="fas fa-chart-bar text-blue-500"></i>
+                            Risk Assessment Overview
+                        </h3>
+                    </div>
+                    <div class="p-4">
+                        <div class="space-y-4" id="risk-assessment-chart">
+                            <!-- Risk assessment items will be added here -->
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-lg shadow overflow-hidden">
+                    <div class="p-4 border-b">
+                        <h3 class="font-bold flex items-center gap-2">
+                            <i class="fas fa-chart-pie text-blue-500"></i>
+                            Evidence Types Distribution
+                        </h3>
+                    </div>
+                    <div class="p-4">
+                        <div class="space-y-4" id="evidence-types-chart">
+                            <!-- Evidence types items will be added here -->
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-lg shadow overflow-hidden">
+                    <div class="p-4 border-b">
+                        <h3 class="font-bold flex items-center gap-2">
+                            <i class="fas fa-chart-line text-blue-500"></i>
+                            AI Analysis Insights
+                        </h3>
+                    </div>
+                    <div class="p-4">
+                        <div class="space-y-4">
+                            <div class="flex justify-between items-center">
+                                <span class="text-sm">Average Confidence Score</span>
+                                <span class="text-lg font-bold text-green-600">87.5%</span>
+                            </div>
+                            
+                            <div class="flex justify-between items-center">
+                                <span class="text-sm">Files Analyzed</span>
+                                <span class="text-lg font-bold text-blue-600">8/12</span>
+                            </div>
+                            
+                            <div class="flex justify-between items-center">
+                                <span class="text-sm">Urgent Cases Detected</span>
+                                <span class="text-lg font-bold text-red-600">2</span>
+                            </div>
+                            
+                            <div class="flex justify-between items-center">
+                                <span class="text-sm">Verified Evidence</span>
+                                <span class="text-lg font-bold text-green-600">8</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-lg shadow overflow-hidden">
+                    <div class="p-4 border-b">
+                        <h3 class="font-bold flex items-center gap-2">
+                            <i class="fas fa-chart-line text-blue-500"></i>
+                            Recent Activity Timeline
+                        </h3>
+                    </div>
+                    <div class="p-4">
+                        <div class="space-y-3 relative evidence-timeline pl-6">
+                            <!-- Timeline items will be added here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Advanced Analytics -->
+            <div class="bg-white rounded-lg shadow overflow-hidden mb-6">
+                <div class="p-4 border-b">
+                    <h3 class="font-bold flex items-center gap-2">
+                        <i class="fas fa-brain text-blue-500"></i>
+                        AI Pattern Analysis
+                    </h3>
+                    <p class="text-gray-600 text-sm mt-1">
+                        Advanced insights from evidence analysis patterns
+                    </p>
+                </div>
+                <div class="p-4">
+                    <div class="grid gap-6 md:grid-cols-2">
+                        <div>
+                            <h4 class="font-medium mb-3">Most Common Evidence Tags</h4>
+                            <div class="space-y-2" id="common-tags">
+                                <!-- Common tags will be added here -->
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <h4 class="font-medium mb-3">Evidence Collection Timeline</h4>
+                            <div class="space-y-2" id="collection-timeline">
+                                <!-- Collection timeline will be added here -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Export and Reporting -->
+            <div class="bg-white rounded-lg shadow overflow-hidden">
+                <div class="p-4 border-b">
+                    <h3 class="font-bold flex items-center gap-2">
+                        <i class="fas fa-download text-blue-500"></i>
+                        Export & Reporting
+                    </h3>
+                    <p class="text-gray-600 text-sm mt-1">
+                        Generate comprehensive reports and export evidence collections
+                    </p>
+                </div>
+                <div class="p-4">
+                    <div class="grid gap-4 md:grid-cols-3">
+                        <button class="h-20 flex flex-col items-center justify-center gap-2 bg-white rounded-lg shadow border border-gray-200 hover:border-blue-300 hover:bg-blue-50 transition-colors">
+                            <i class="fas fa-file-alt text-blue-500 text-2xl"></i>
+                            <span class="text-sm">Evidence Report</span>
+                        </button>
+                        <button class="h-20 flex flex-col items-center justify-center gap-2 bg-white rounded-lg shadow border border-gray-200 hover:border-blue-300 hover:bg-blue-50 transition-colors">
+                            <i class="fas fa-chart-bar text-blue-500 text-2xl"></i>
+                            <span class="text-sm">Analytics Report</span>
+                        </button>
+                        <button class="h-20 flex flex-col items-center justify-center gap-2 bg-white rounded-lg shadow border border-gray-200 hover:border-blue-300 hover:bg-blue-50 transition-colors">
+                            <i class="fas fa-archive text-blue-500 text-2xl"></i>
+                            <span class="text-sm">Case Summary</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Emergency Actions Bar -->
+        <div class="bg-red-50 border border-red-200 rounded-lg shadow">
+            <div class="p-4">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                        <i class="fas fa-exclamation-triangle text-red-600 text-xl"></i>
+                        <div>
+                            <h3 class="font-medium text-red-900">Emergency Actions</h3>
+                            <p class="text-sm text-red-700">Quick access to emergency resources and reporting</p>
+                        </div>
+                    </div>
+                    <div class="flex gap-2">
+                        <button class="px-3 py-1.5 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors text-sm">
+                            <i class="fas fa-phone mr-2"></i>
+                            Call Emergency
+                        </button>
+                        <button class="px-3 py-1.5 bg-white border border-red-300 text-red-700 rounded-md hover:bg-red-100 transition-colors text-sm">
+                            <i class="fas fa-flag mr-2"></i>
+                            Report Incident
+                        </button>
+                        <button class="px-3 py-1.5 bg-white border border-red-300 text-red-700 rounded-md hover:bg-red-100 transition-colors text-sm">
+                            <i class="fas fa-user-shield mr-2"></i>
+                            Contact Advocate
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Resources Section -->
+        <div class="bg-white rounded-lg shadow overflow-hidden">
+            <div class="p-4 border-b">
+                <h3 class="font-bold flex items-center gap-2">
+                    <i class="fas fa-book-open text-blue-500"></i>
+                    GBV Resources & Support
+                </h3>
+            </div>
+            <div class="p-4">
+                <div class="grid gap-6 md:grid-cols-3">
+                    <!-- Books -->
+                    <div>
+                        <h4 class="font-medium mb-3 flex items-center gap-2">
+                            <i class="fas fa-book text-blue-500"></i>
+                            Recommended Books
+                        </h4>
+                        <ul class="space-y-2 text-sm">
+                            <li><a href="https://www.goodreads.com/book/show/33786693-no-visible-bruises" class="text-blue-600 hover:underline">"No Visible Bruises" by Rachel Louise Snyder</a></li>
+                            <li><a href="#" class="text-blue-600 hover:underline">"See What You Made Me Do" by Jess Hill</a></li>
+                            <li><a href="#" class="text-blue-600 hover:underline">"The Body Keeps the Score" by Bessel van der Kolk</a></li>
+                            <li><a href="#" class="text-blue-600 hover:underline">"Why Does He Do That?" by Lundy Bancroft</a></li>
+                        </ul>
+                    </div>
+                    
+                    <!-- Videos -->
+                    <div>
+                        <h4 class="font-medium mb-3 flex items-center gap-2">
+                            <i class="fas fa-video text-blue-500"></i>
+                            Educational Videos
+                        </h4>
+                        <ul class="space-y-2 text-sm">
+                            <li><a href="https://www.ted.com/talks/angela_macdougall_4_ways_men_relate_to_violence_against_women" class="text-blue-600 hover:underline">"Understanding Gender-Based Violence" - TED Talk</a></li>
+                            <li><a href="#" class="text-blue-600 hover:underline">"The Signs of Domestic Abuse" - WHO</a></li>
+                            <li><a href="#" class="text-blue-600 hover:underline">"Documenting Evidence for Legal Cases" - Legal Aid</a></li>
+                            <li><a href="#" class="text-blue-600 hover:underline">"Trauma-Informed Care" - Psychology Today</a></li>
+                        </ul>
+                    </div>
+                    
+                    <!-- Podcasts -->
+                    <div>
+                        <h4 class="font-medium mb-3 flex items-center gap-2">
+                            <i class="fas fa-podcast text-blue-500"></i>
+                            Support Podcasts
+                        </h4>
+                        <ul class="space-y-2 text-sm">
+                            <li><a href="https://www.youtube.com/c/TheTraumaTherapistProjecthttps://www.youtube.com/c/TheTraumaTherapistProject" class="text-blue-600 hover:underline">"The Trauma Therapist Podcast"</a></li>
+                            <li><a href="#" class="text-blue-600 hover:underline">"Ending Domestic Violence"</a></li>
+                            <li><a href="#" class="text-blue-600 hover:underline">"The Healing Place"</a></li>
+                            <li><a href="#" class="text-blue-600 hover:underline">"Survivor Stories"</a></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- File Details Modal -->
+    <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden" id="file-modal">
+        <div class="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[80vh] overflow-y-auto">
+            <div class="p-4 border-b flex justify-between items-center">
+                <h3 class="font-bold text-lg flex items-center gap-2" id="modal-file-name">
+                    <i class="fas fa-file-image text-blue-500"></i>
+                    Threatening_Messages_Screenshot.png
+                </h3>
+                <button class="text-gray-500 hover:text-gray-700" onclick="closeModal()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="p-4">
+                <div class="flex flex-wrap gap-2 mb-4">
+                    <span class="px-2 py-1 rounded-full text-xs font-medium priority-high">high</span>
+                    <span class="px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">screenshot</span>
+                    <span class="px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">harassment</span>
+                    <span class="px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">text-messages</span>
+                </div>
+                
+                <div class="grid grid-cols-4 gap-2 mb-4">
+                    <button class="tab-btn-modal py-2 px-3 text-center text-sm font-medium border-b-2 border-blue-500 text-blue-600" data-tab="overview">
+                        Overview
+                    </button>
+                    <button class="tab-btn-modal py-2 px-3 text-center text-sm font-medium text-gray-500 hover:text-gray-700" data-tab="ai-analysis">
+                        AI Analysis
+                    </button>
+                    <button class="tab-btn-modal py-2 px-3 text-center text-sm font-medium text-gray-500 hover:text-gray-700" data-tab="metadata">
+                        Metadata
+                    </button>
+                    <button class="tab-btn-modal py-2 px-3 text-center text-sm font-medium text-gray-500 hover:text-gray-700" data-tab="custody">
+                        Chain of Custody
+                    </button>
+                </div>
+                
+                <div class="tab-content-modal active" id="overview-modal">
+                    <div class="grid grid-cols-2 gap-4 text-sm mb-4">
+                        <div>
+                            <p class="font-medium">File Type</p>
+                            <p class="text-gray-600 capitalize">screenshot</p>
+                        </div>
+                        <div>
+                            <p class="font-medium">File Size</p>
+                            <p class="text-gray-600">2.5 MB</p>
+                        </div>
+                        <div>
+                            <p class="font-medium">Upload Date</p>
+                            <p class="text-gray-600">May 15, 2024, 10:30 AM</p>
+                        </div>
+                        <div>
+                            <p class="font-medium">Status</p>
+                            <div class="flex gap-1">
+                                <span class="px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 border border-green-200">Encrypted</span>
+                                <span class="px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 border border-blue-200">Verified</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <p class="font-medium text-sm mb-2">Description</p>
+                        <p class="text-sm text-gray-600 bg-gray-50 p-3 rounded">
+                            Screenshots of threatening text messages from perpetrator
+                        </p>
+                    </div>
+                    
+                    <div>
+                        <p class="font-medium text-sm mb-2">Case Assignment</p>
+                        <p class="text-sm text-gray-600">
+                            Domestic Violence Case #2024-001
+                        </p>
+                    </div>
+                </div>
+                
+                <div class="tab-content-modal" id="ai-analysis-modal">
+                    <div class="space-y-4">
+                        <div class="p-3 bg-red-100 border-l-4 border-red-500 rounded flex items-start gap-2">
+                            <i class="fas fa-brain text-red-500 mt-1"></i>
+                            <div>
+                                <strong>Risk Assessment: HIGH</strong><br>
+                                Analysis confidence: 95.0%
+                            </div>
+                        </div>
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div class="bg-white border rounded-lg p-3">
+                                <h4 class="font-medium text-sm flex items-center gap-2 mb-2">
+                                    <i class="fas fa-bullseye text-blue-500"></i>
+                                    Key Elements Detected
+                                </h4>
+                                <ul class="space-y-1 text-sm">
+                                    <li class="flex items-center gap-2">
+                                        <i class="fas fa-check-circle text-green-500"></i>
+                                        Explicit threats
+                                    </li>
+                                    <li class="flex items-center gap-2">
+                                        <i class="fas fa-check-circle text-green-500"></i>
+                                        Intimidation language
+                                    </li>
+                                    <li class="flex items-center gap-2">
+                                        <i class="fas fa-check-circle text-green-500"></i>
+                                        Personal information
+                                    </li>
+                                </ul>
+                            </div>
+                            
+                            <div class="bg-white border rounded-lg p-3">
+                                <h4 class="font-medium text-sm flex items-center gap-2 mb-2">
+                                    <i class="fas fa-bolt text-blue-500"></i>
+                                    AI Recommendations
+                                </h4>
+                                <ul class="space-y-1 text-sm">
+                                    <li class="flex items-center gap-2">
+                                        <i class="fas fa-info-circle text-blue-500"></i>
+                                        Immediate safety measures
+                                    </li>
+                                    <li class="flex items-center gap-2">
+                                        <i class="fas fa-info-circle text-blue-500"></i>
+                                        Contact authorities
+                                    </li>
+                                    <li class="flex items-center gap-2">
+                                        <i class="fas fa-info-circle text-blue-500"></i>
+                                        Document location
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+                        
+                        <div class="bg-white border rounded-lg p-3">
+                            <h4 class="font-medium text-sm flex items-center gap-2 mb-2">
+                                <i class="fas fa-comment text-blue-500"></i>
+                                Extracted Content
+                            </h4>
+                            <p class="text-sm bg-yellow-50 p-3 rounded border-l-4 border-yellow-400 font-mono">
+                                "I know where you live... You better watch your back..."
+                            </p>
+                        </div>
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div class="bg-white border rounded-lg p-3">
+                                <h4 class="font-medium text-sm flex items-center gap-1 mb-2">
+                                    <i class="fas fa-user text-blue-500"></i>
+                                    Persons
+                                </h4>
+                                <div>
+                                    <span class="px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800 mr-1 mb-1 inline-block">John Doe</span>
+                                </div>
+                            </div>
+                            
+                            <div class="bg-white border rounded-lg p-3">
+                                <h4 class="font-medium text-sm flex items-center gap-1 mb-2">
+                                    <i class="fas fa-map-marker-alt text-blue-500"></i>
+                                    Locations
+                                </h4>
+                                <div>
+                                    <span class="px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800 mr-1 mb-1 inline-block">Home address mentioned</span>
+                                </div>
+                            </div>
+                            
+                            <div class="bg-white border rounded-lg p-3">
+                                <h4 class="font-medium text-sm flex items-center gap-1 mb-2">
+                                    <i class="fas fa-heart text-blue-500"></i>
+                                    Emotions
+                                </h4>
+                                <div>
+                                    <span class="px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800 mr-1 mb-1 inline-block">anger</span>
+                                    <span class="px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800 mr-1 mb-1 inline-block">intimidation</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="tab-content-modal" id="metadata-modal">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="bg-white border rounded-lg p-3">
+                            <h4 class="font-medium text-sm mb-3">Technical Information</h4>
+                            <div class="space-y-2 text-sm">
+                                <div>
+                                    <p class="font-medium text-xs text-gray-500">Device</p>
+                                    <p class="text-gray-800">iPhone 14 Pro</p>
+                                </div>
+                                <div>
+                                    <p class="font-medium text-xs text-gray-500">Original Timestamp</p>
+                                    <p class="text-gray-800">May 14, 2024, 2:15 PM</p>
+                                </div>
+                                <div>
+                                    <p class="font-medium text-xs text-gray-500">GPS Coordinates</p>
+                                    <p class="text-gray-800 font-mono">-26.204100, 28.047300</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="bg-white border rounded-lg p-3">
+                            <h4 class="font-medium text-sm mb-3">Location Information</h4>
+                            <div class="space-y-2 text-sm">
+                                <div>
+                                    <p class="font-medium text-xs text-gray-500">Network</p>
+                                    <p class="text-gray-800">WiFi (Home Network)</p>
+                                </div>
+                                <div>
+                                    <p class="font-medium text-xs text-gray-500">Battery Level</p>
+                                    <p class="text-gray-800">78%</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="tab-content-modal" id="custody-modal">
+                    <div class="space-y-3">
+                        <div class="bg-white border rounded-lg border-l-4 border-l-blue-500 p-4">
+                            <div class="flex items-start justify-between">
+                                <div class="flex-1">
+                                    <h4 class="font-medium text-sm">File uploaded</h4>
+                                    <p class="text-sm text-gray-500">by Sarah M.</p>
+                                    <p class="text-xs text-gray-500 mt-1">Original screenshot captured and uploaded</p>
+                                </div>
+                                <div class="text-right">
+                                    <p class="text-xs text-gray-500">May 15, 2024</p>
+                                    <p class="text-xs text-gray-500">10:30 AM</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="bg-white border rounded-lg border-l-4 border-l-blue-500 p-4">
+                            <div class="flex items-start justify-between">
+                                <div class="flex-1">
+                                    <h4 class="font-medium text-sm">AI analysis completed</h4>
+                                    <p class="text-sm text-gray-500">by AI System</p>
+                                    <p class="text-xs text-gray-500 mt-1">Risk level: high, Confidence: 95.0%</p>
+                                </div>
+                                <div class="text-right">
+                                    <p class="text-xs text-gray-500">May 15, 2024</p>
+                                    <p class="text-xs text-gray-500">10:35 AM</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="p-4 border-t flex justify-between">
+                <div class="flex gap-2">
+                    <button class="px-3 py-1.5 bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors">
+                        <i class="fas fa-download mr-2"></i>
+                        Download
+                    </button>
+                    <button class="px-3 py-1.5 bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors">
+                        <i class="fas fa-share mr-2"></i>
+                        Share
+                    </button>
+                </div>
+                <button class="px-3 py-1.5 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors">
+                    <i class="fas fa-trash mr-2"></i>
+                    Delete
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Sample data
+        const mockFiles = [
+            {
+                id: '1',
+                name: 'Threatening_Messages_Screenshot.png',
+                type: 'screenshot',
+                size: 1024 * 1024 * 2.5,
+                uploadDate: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
+                caseId: 'case-1',
+                encrypted: true,
+                shared: false,
+                verified: true,
+                priority: 'high',
+                tags: ['harassment', 'text-messages', 'threats'],
+                description: 'Screenshots of threatening text messages from perpetrator',
+                aiAnalysis: {
+                    sentiment: 'threatening',
+                    confidence: 0.95,
+                    keyElements: ['explicit threats', 'intimidation language', 'personal information'],
+                    riskLevel: 'high',
+                    recommendations: ['Immediate safety measures', 'Contact authorities', 'Document location'],
+                    extractedText: 'I know where you live... You better watch your back...',
+                    emotions: ['anger', 'intimidation'],
+                    persons: ['John Doe'],
+                    locations: ['Home address mentioned']
+                },
+                metadata: {
+                    timestamp: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
+                    deviceInfo: 'iPhone 14 Pro',
+                    coordinates: { lat: -26.2041, lng: 28.0473 }
+                },
+                chainOfCustody: [
+                    {
+                        action: 'File uploaded',
+                        user: 'Sarah M.',
+                        timestamp: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
+                        details: 'Original screenshot captured and uploaded'
+                    },
+                    {
+                        action: 'AI analysis completed',
+                        user: 'System',
+                        timestamp: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000 + 5 * 60 * 1000)
+                    }
+                ]
+            },
+            {
+                id: '2',
+                name: 'Emergency_Call_Recording.mp3',
+                type: 'recording',
+                size: 1024 * 1024 * 12.3,
+                uploadDate: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
+                caseId: 'case-1',
+                encrypted: true,
+                shared: true,
+                verified: true,
+                priority: 'urgent',
+                tags: ['emergency-call', 'verbal-abuse', '911-call'],
+                description: 'Emergency call recording during incident',
+                aiAnalysis: {
+                    sentiment: 'urgent',
+                    confidence: 0.92,
+                    keyElements: ['distress signals', 'background violence sounds', 'clear victim identification'],
+                    riskLevel: 'critical',
+                    recommendations: ['Immediate intervention required', 'Medical assistance', 'Police dispatch'],
+                    emotions: ['fear', 'panic', 'distress'],
+                    persons: ['Victim voice identified', 'Male aggressor voice']
+                },
+                metadata: {
+                    timestamp: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
+                    deviceInfo: 'Samsung Galaxy S23',
+                    location: 'Emergency services'
+                },
+                chainOfCustody: [
+                    {
+                        action: 'Recording obtained',
+                        user: 'Emergency Services',
+                        timestamp: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000)
+                    },
+                    {
+                        action: 'Uploaded to vault',
+                        user: 'Detective Johnson',
+                        timestamp: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000)
+                    }
+                ]
+            },
+            {
+                id: '3',
+                name: 'Medical_Examination_Photos.jpg',
+                type: 'image',
+                size: 1024 * 1024 * 4.2,
+                uploadDate: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
+                caseId: 'case-1',
+                encrypted: true,
+                shared: true,
+                verified: true,
+                priority: 'high',
+                tags: ['medical-evidence', 'injuries', 'forensic-photos'],
+                description: 'Medical examination photographs documenting injuries',
+                aiAnalysis: {
+                    sentiment: 'concerning',
+                    confidence: 0.88,
+                    keyElements: ['visible injuries', 'defensive wounds', 'pattern analysis'],
+                    riskLevel: 'high',
+                    recommendations: ['Medical documentation', 'Forensic analysis', 'Pattern matching']
+                },
+                metadata: {
+                    timestamp: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000),
+                    deviceInfo: 'Medical camera system',
+                    location: 'City General Hospital'
+                },
+                chainOfCustody: [
+                    {
+                        action: 'Photos taken',
+                        user: 'Dr. Smith, MD',
+                        timestamp: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000)
+                    },
+                    {
+                        action: 'Forensic review',
+                        user: 'Forensic Team',
+                        timestamp: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+                    }
+                ]
+            }
+        ];
+
+        const mockCases = [
+            {
+                id: 'case-1',
+                title: 'Domestic Violence Case #2024-001',
+                status: 'active',
+                priority: 'high',
+                createdDate: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000),
+                lastUpdated: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
+                fileCount: 8,
+                riskAssessment: 'high'
+            },
+            {
+                id: 'case-2',
+                title: 'Workplace Harassment Investigation',
+                status: 'active',
+                priority: 'medium',
+                createdDate: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000),
+                lastUpdated: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
+                fileCount: 3,
+                riskAssessment: 'medium'
+            }
+        ];
+
+        // State
+        let files = [...mockFiles];
+        let cases = [...mockCases];
+        let uploadProgress = {};
+        let isUploading = false;
+        let isAnalyzing = {};
+
+        // DOM Elements
+        const filesGrid = document.getElementById('files-grid');
+        const casesGrid = document.getElementById('cases-grid');
+        const fileUploadInput = document.getElementById('file-upload');
+        const uploadProgressContainer = document.getElementById('upload-progress-container');
+        const uploadProgressItems = document.getElementById('upload-progress-items');
+        const searchQueryInput = document.getElementById('search-query');
+        const caseFilter = document.getElementById('case-filter');
+        const typeFilter = document.getElementById('type-filter');
+        const priorityFilter = document.getElementById('priority-filter');
+        const noFilesMessage = document.getElementById('no-files-message');
+        const filteredCount = document.getElementById('filtered-count');
+        const totalCount = document.getElementById('total-count');
+        const totalFilesElement = document.getElementById('total-files');
+        const highPriorityElement = document.getElementById('high-priority');
+        const verifiedFilesElement = document.getElementById('verified-files');
+        const totalSizeElement = document.getElementById('total-size');
+        const sharedFilesElement = document.getElementById('shared-files');
+        const activeCasesElement = document.getElementById('active-cases');
+        const newCaseTitleInput = document.getElementById('new-case-title');
+        const createCaseBtn = document.getElementById('create-case-btn');
+        const caseAssignmentSelect = document.getElementById('case-assignment');
+        const riskAssessmentChart = document.getElementById('risk-assessment-chart');
+        const evidenceTypesChart = document.getElementById('evidence-types-chart');
+        const commonTagsList = document.getElementById('common-tags');
+        const collectionTimeline = document.getElementById('collection-timeline');
+        const fileModal = document.getElementById('file-modal');
+        const modalFileName = document.getElementById('modal-file-name');
+
+        // Helper functions
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
+        function getFileIcon(type, priority) {
+            const isPriority = priority === 'urgent' || priority === 'high';
+            let iconClass = 'text-2xl ';
+            
+            if (isPriority) {
+                iconClass += 'text-red-500';
+            } else {
+                switch (type) {
+                    case 'image': case 'screenshot': iconClass += 'text-blue-500'; break;
+                    case 'video': iconClass += 'text-purple-500'; break;
+                    case 'audio': case 'recording': iconClass += 'text-green-500'; break;
+                    case 'document': iconClass += 'text-yellow-500'; break;
+                    default: iconClass += 'text-gray-500';
+                }
+            }
+            
+            switch (type) {
+                case 'image': return `<i class="fas fa-image ${iconClass}"></i>`;
+                case 'video': return `<i class="fas fa-video ${iconClass}"></i>`;
+                case 'audio': return `<i class="fas fa-music ${iconClass}"></i>`;
+                case 'recording': return `<i class="fas fa-microphone ${iconClass}"></i>`;
+                case 'screenshot': return `<i class="fas fa-camera ${iconClass}"></i>`;
+                case 'document': return `<i class="fas fa-file-alt ${iconClass}"></i>`;
+                default: return `<i class="fas fa-file ${iconClass}"></i>`;
+            }
+        }
+
+        function getPriorityBadge(priority) {
+            switch (priority) {
+                case 'urgent': return 'bg-red-100 text-red-800 border-red-200';
+                case 'high': return 'bg-orange-100 text-orange-800 border-orange-200';
+                case 'medium': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+                case 'low': return 'bg-green-100 text-green-800 border-green-200';
+                default: return 'bg-gray-100 text-gray-800 border-gray-200';
+            }
+        }
+
+        function getRiskColor(risk) {
+            switch (risk) {
+                case 'critical': return 'bg-red-500';
+                case 'high': return 'bg-orange-500';
+                case 'medium': return 'bg-yellow-500';
+                case 'low': return 'bg-green-500';
+                default: return 'bg-gray-500';
+            }
+        }
+
+        function updateStats() {
+            const totalSize = files.reduce((sum, file) => sum + file.size, 0);
+            const highPriorityFiles = files.filter(f => f.priority === 'urgent' || f.priority === 'high').length;
+            const verifiedFiles = files.filter(f => f.verified).length;
+            const sharedFiles = files.filter(f => f.shared).length;
+            const activeCases = cases.filter(c => c.status === 'active').length;
+            
+            totalFilesElement.textContent = files.length;
+            highPriorityElement.textContent = highPriorityFiles;
+            verifiedFilesElement.textContent = verifiedFiles;
+            totalSizeElement.textContent = formatFileSize(totalSize);
+            sharedFilesElement.textContent = sharedFiles;
+            activeCasesElement.textContent = activeCases;
+        }
+
+        function renderFiles(filteredFiles) {
+            filesGrid.innerHTML = '';
+            totalCount.textContent = files.length;
+            filteredCount.textContent = filteredFiles.length;
+            
+            if (filteredFiles.length === 0) {
+                noFilesMessage.classList.remove('hidden');
+                return;
+            }
+            
+            noFilesMessage.classList.add('hidden');
+            
+            filteredFiles.forEach(file => {
+                const fileCard = document.createElement('div');
+                fileCard.className = `file-card bg-white rounded-lg shadow border-l-4 ${
+                    file.priority === 'urgent' ? 'border-l-red-500' : 
+                    file.priority === 'high' ? 'border-l-orange-500' : 'border-l-blue-500'
+                }`;
+                
+                const isAnalyzingThisFile = isAnalyzing[file.id];
+                
+                fileCard.innerHTML = `
+                    <div class="p-4">
+                        <div class="flex items-start justify-between mb-3">
+                            <div class="flex items-center gap-2">
+                                ${getFileIcon(file.type, file.priority)}
+                                ${isAnalyzingThisFile ? '<div class="animate-spin"><i class="fas fa-brain text-blue-500 text-sm"></i></div>' : ''}
+                            </div>
+                            <div class="flex gap-1">
+                                <span class="px-2 py-1 rounded-full text-xs font-medium ${getPriorityBadge(file.priority)}">
+                                    ${file.priority}
+                                </span>
+                            </div>
+                        </div>
+                        
+                        <h3 class="font-semibold text-sm mb-2 truncate" title="${file.name}">
+                            ${file.name}
+                        </h3>
+                        
+                        <div class="space-y-2 mb-3">
+                            <p class="text-xs text-gray-500">
+                                ${formatFileSize(file.size)} • ${file.uploadDate.toLocaleDateString()}
+                            </p>
+                            
+                            ${file.aiAnalysis ? `
+                            <div class="bg-blue-50 p-2 rounded-lg">
+                                <div class="flex items-center justify-between mb-1">
+                                    <span class="text-xs font-medium text-blue-700">AI Analysis</span>
+                                    <span class="px-2 py-1 rounded-full text-xs font-medium text-white ${getRiskColor(file.aiAnalysis.riskLevel)}">
+                                        ${file.aiAnalysis.riskLevel}
+                                    </span>
+                                </div>
+                                <p class="text-xs text-blue-600 mb-1">
+                                    Confidence: ${(file.aiAnalysis.confidence * 100).toFixed(1)}%
+                                </p>
+                                <div class="text-xs text-blue-600">
+                                    ${file.aiAnalysis.keyElements.slice(0, 2).join(', ')}
+                                    ${file.aiAnalysis.keyElements.length > 2 ? '...' : ''}
+                                </div>
+                            </div>
+                            ` : ''}
+                        </div>
+                        
+                        ${file.description ? `
+                        <p class="text-xs text-gray-500 mb-2 line-clamp-2">
+                            ${file.description}
+                        </p>
+                        ` : ''}
+                        
+                        ${file.tags.length > 0 ? `
+                        <div class="flex flex-wrap gap-1 mb-3">
+                            ${file.tags.slice(0, 2).map(tag => `
+                                <span class="px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800 border border-gray-200">
+                                    ${tag}
+                                </span>
+                            `).join('')}
+                            ${file.tags.length > 2 ? `
+                                <span class="px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800 border border-gray-200">
+                                    +${file.tags.length - 2}
+                                </span>
+                            ` : ''}
+                        </div>
+                        ` : ''}
+                        
+                        <div class="flex items-center justify-between text-xs text-gray-500 mb-3">
+                            <div class="flex items-center gap-1">
+                                ${file.encrypted ? '<i class="fas fa-lock text-green-500 text-xs"></i>' : ''}
+                                ${file.verified ? '<i class="fas fa-check-circle text-blue-500 text-xs"></i>' : ''}
+                                ${file.shared ? '<i class="fas fa-share text-orange-500 text-xs"></i>' : ''}
+                            </div>
+                            ${file.caseId ? `
+                            <span class="text-xs bg-gray-100 px-2 py-1 rounded">
+                                ${cases.find(c => c.id === file.caseId)?.title.slice(0, 15)}...
+                            </span>
+                            ` : ''}
+                        </div>
+                        
+                        <div class="flex gap-1">
+                            <button class="px-3 py-1.5 flex-1 bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors text-sm view-details-btn" data-file-id="${file.id}">
+                                <i class="fas fa-eye mr-1 text-xs"></i>
+                                Details
+                            </button>
+                            <button class="px-2 py-1.5 bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors">
+                                <i class="fas fa-star text-xs"></i>
+                            </button>
+                            <button class="px-2 py-1.5 bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors">
+                                <i class="fas fa-share text-xs"></i>
+                            </button>
+                        </div>
+                    </div>
+                `;
+                
+                filesGrid.appendChild(fileCard);
+            });
+            
+            // Add event listeners to view details buttons
+            document.querySelectorAll('.view-details-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const fileId = this.getAttribute('data-file-id');
+                    const file = files.find(f => f.id === fileId);
+                    if (file) {
+                        openFileModal(file);
+                    }
+                });
+            });
+        }
+
+        function renderCases() {
+            casesGrid.innerHTML = '';
+            
+            cases.forEach(caseItem => {
+                const caseCard = document.createElement('div');
+                caseCard.className = 'bg-white rounded-lg shadow border-l-4 border-l-blue-500';
+                
+                caseCard.innerHTML = `
+                    <div class="p-4">
+                        <div class="flex items-start justify-between mb-3">
+                            <div class="flex-1">
+                                <h3 class="font-semibold text-sm mb-1">${caseItem.title}</h3>
+                                <p class="text-xs text-gray-500">
+                                    Created ${caseItem.createdDate.toLocaleDateString()}
+                                </p>
+                            </div>
+                            <span class="px-2 py-1 rounded-full text-xs font-medium ${getPriorityBadge(caseItem.priority)}">
+                                ${caseItem.priority}
+                            </span>
+                        </div>
+                        
+                        <div class="space-y-2 text-xs">
+                            <div class="flex justify-between">
+                                <span>Status:</span>
+                                <span class="px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800 capitalize">
+                                    ${caseItem.status}
+                                </span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span>Evidence Files:</span>
+                                <span class="font-medium">${files.filter(f => f.caseId === caseItem.id).length}</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span>Risk Level:</span>
+                                <span class="px-2 py-1 rounded-full text-xs font-medium text-white ${getRiskColor(caseItem.riskAssessment)}">
+                                    ${caseItem.riskAssessment}
+                                </span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span>Last Updated:</span>
+                                <span>${caseItem.lastUpdated.toLocaleDateString()}</span>
+                            </div>
+                        </div>
+                        
+                        <div class="mt-4 flex gap-2">
+                            <button class="px-3 py-1.5 flex-1 bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors text-sm">
+                                <i class="fas fa-eye mr-1 text-xs"></i>
+                                View
+                            </button>
+                            <button class="px-2 py-1.5 bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors">
+                                <i class="fas fa-archive text-xs"></i>
+                            </button>
+                        </div>
+                    </div>
+                `;
+                
+                casesGrid.appendChild(caseCard);
+            });
+        }
+
+        function renderRiskAssessmentChart() {
+            riskAssessmentChart.innerHTML = '';
+            
+            ['critical', 'high', 'medium', 'low'].forEach(risk => {
+                const count = files.filter(f => f.aiAnalysis?.riskLevel === risk).length;
+                const percentage = files.length > 0 ? (count / files.length) * 100 : 0;
+                
+                const riskItem = document.createElement('div');
+                riskItem.className = 'space-y-2';
+                riskItem.innerHTML = `
+                    <div class="flex justify-between text-sm">
+                        <span class="capitalize font-medium">${risk} Risk</span>
+                        <span>${count} files (${percentage.toFixed(1)}%)</span>
+                    </div>
+                    <div class="w-full bg-gray-200 rounded-full h-2">
+                        <div class="h-2 rounded-full ${getRiskColor(risk)}" style="width: ${percentage}%"></div>
+                    </div>
+                `;
+                
+                riskAssessmentChart.appendChild(riskItem);
+            });
+        }
+
+        function renderEvidenceTypesChart() {
+            evidenceTypesChart.innerHTML = '';
+            
+            ['image', 'video', 'audio', 'document', 'screenshot', 'recording'].forEach(type => {
+                const count = files.filter(f => f.type === type).length;
+                const percentage = files.length > 0 ? (count / files.length) * 100 : 0;
+                
+                if (count > 0) {
+                    const typeItem = document.createElement('div');
+                    typeItem.className = 'space-y-2';
+                    typeItem.innerHTML = `
+                        <div class="flex justify-between text-sm">
+                            <span class="capitalize font-medium flex items-center gap-2">
+                                ${getFileIcon(type)}
+                                ${type}
+                            </span>
+                            <span>${count} files (${percentage.toFixed(1)}%)</span>
+                        </div>
+                        <div class="w-full bg-gray-200 rounded-full h-2">
+                            <div class="h-2 rounded-full bg-blue-500" style="width: ${percentage}%"></div>
+                        </div>
+                    `;
+                    
+                    evidenceTypesChart.appendChild(typeItem);
+                }
+            });
+        }
+
+        function renderCommonTags() {
+            commonTagsList.innerHTML = '';
+            
+            const tagCounts = files.reduce((acc, file) => {
+                file.tags.forEach(tag => {
+                    acc[tag] = (acc[tag] || 0) + 1;
+                });
+                return acc;
+            }, {});
+            
+            Object.entries(tagCounts)
+                .sort(([,a], [,b]) => b - a)
+                .slice(0, 5)
+                .forEach(([tag, count]) => {
+                    const tagItem = document.createElement('div');
+                    tagItem.className = 'flex justify-between items-center';
+                    tagItem.innerHTML = `
+                        <span class="px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800 border border-gray-200">
+                            ${tag}
+                        </span>
+                        <span class="text-sm font-medium">${count}</span>
+                    `;
+                    
+                    commonTagsList.appendChild(tagItem);
+                });
+        }
+
+        function renderCollectionTimeline() {
+            collectionTimeline.innerHTML = '';
+            
+            files.slice(0, 5).forEach((file, index) => {
+                const timelineItem = document.createElement('div');
+                timelineItem.className = 'flex items-center gap-3 text-xs';
+                timelineItem.innerHTML = `
+                    <div class="w-8 text-center text-gray-500">
+                        ${index + 1}
+                    </div>
+                    <div class="flex-1">
+                        <p class="font-medium">${file.uploadDate.toLocaleDateString()}</p>
+                        <p class="text-gray-500">
+                            ${file.type} - ${formatFileSize(file.size)}
+                        </p>
+                    </div>
+                    ${file.priority === 'urgent' ? '<i class="fas fa-exclamation-triangle text-red-500 text-sm"></i>' : ''}
+                `;
+                
+                collectionTimeline.appendChild(timelineItem);
+            });
+        }
+
+        function filterFiles() {
+            const searchQuery = searchQueryInput.value.toLowerCase();
+            const caseFilterValue = caseFilter.value;
+            const typeFilterValue = typeFilter.value;
+            const priorityFilterValue = priorityFilter.value;
+            
+            const filtered = files.filter(file => {
+                const matchesSearch = file.name.toLowerCase().includes(searchQuery) ||
+                                     file.description.toLowerCase().includes(searchQuery) ||
+                                     file.tags.some(tag => tag.toLowerCase().includes(searchQuery));
+                const matchesType = typeFilterValue === 'all' || file.type === typeFilterValue;
+                const matchesPriority = priorityFilterValue === 'all' || file.priority === priorityFilterValue;
+                const matchesCase = caseFilterValue === 'all' || file.caseId === caseFilterValue;
+                return matchesSearch && matchesType && matchesPriority && matchesCase;
+            });
+            
+            renderFiles(filtered);
+        }
+
+        function triggerFileUpload(accept) {
+            fileUploadInput.setAttribute('accept', accept);
+            fileUploadInput.click();
+        }
+
+        function handleFileUpload(event) {
+            const selectedFiles = Array.from(event.target.files || []);
+            
+            if (selectedFiles.length === 0) return;
+            
+            isUploading = true;
+            uploadProgressContainer.classList.remove('hidden');
+            uploadProgressItems.innerHTML = '';
+            
+            selectedFiles.forEach(file => {
+                if (file.size > 100 * 1024 * 1024) {
+                    alert(`File ${file.name} exceeds 100MB limit`);
+                    return;
+                }
+                
+                const fileId = `file-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+                
+                // Add progress item
+                const progressItem = document.createElement('div');
+                progressItem.className = 'space-y-2';
+                progressItem.id = `progress-${fileId}`;
+                progressItem.innerHTML = `
+                    <div class="flex justify-between text-sm">
+                        <span class="flex items-center gap-2">
+                            <i class="fas fa-upload text-gray-500"></i>
+                            Uploading ${file.name}...
+                        </span>
+                        <span class="font-medium">0%</span>
+                    </div>
+                    <div class="w-full bg-gray-200 rounded-full h-2">
+                        <div class="progress-bar h-2 rounded-full bg-blue-500" style="width: 0%"></div>
+                    </div>
+                `;
+                uploadProgressItems.appendChild(progressItem);
+                
+                // Simulate upload progress
+                let progress = 0;
+                const interval = setInterval(() => {
+                    progress += 15;
+                    if (progress >= 100) {
+                        clearInterval(interval);
+                        progress = 100;
+                    }
+                    
+                    const progressElement = document.querySelector(`#progress-${fileId} .progress-bar`);
+                    const percentElement = document.querySelector(`#progress-${fileId} .font-medium`);
+                    
+                    if (progressElement && percentElement) {
+                        progressElement.style.width = `${progress}%`;
+                        percentElement.textContent = `${progress}%`;
+                    }
+                    
+                    if (progress === 100) {
+                        setTimeout(() => {
+                            addFileToVault(fileId, file);
+                            progressItem.remove();
+                            
+                            if (uploadProgressItems.children.length === 0) {
+                                uploadProgressContainer.classList.add('hidden');
+                            }
+                        }, 500);
+                    }
+                }, 200);
+            });
+            
+            isUploading = false;
+        }
+
+        async function addFileToVault(fileId, file) {
+            const evidenceFile = {
+                id: fileId,
+                name: file.name,
+                type: getFileType(file.type),
+                size: file.size,
+                uploadDate: new Date(),
+                caseId: caseAssignmentSelect.value !== 'all' ? caseAssignmentSelect.value : undefined,
+                encrypted: true,
+                shared: false,
+                verified: false,
+                priority: 'medium',
+                tags: [],
+                description: '',
+                metadata: {
+                    timestamp: new Date(),
+                    deviceInfo: navigator.userAgent,
+                    coordinates: await getCurrentLocation()
+                },
+                chainOfCustody: [
+                    {
+                        action: 'File uploaded',
+                        user: 'Current User',
+                        timestamp: new Date(),
+                        details: `Uploaded ${file.name} (${formatFileSize(file.size)})`
+                    }
+                ]
+            };
+            
+            files.push(evidenceFile);
+            updateStats();
+            filterFiles();
+            
+            // Start AI analysis
+            performAIAnalysis(fileId);
+        }
+
+        function getFileType(mimeType) {
+            if (mimeType.startsWith('image/')) return 'image';
+            if (mimeType.startsWith('video/')) return 'video';
+            if (mimeType.startsWith('audio/')) return 'audio';
+            return 'document';
+        }
+
+        async function getCurrentLocation() {
+            return new Promise((resolve) => {
+                if (navigator.geolocation) {
+                    navigator.geolocation.getCurrentPosition(
+                        (position) => {
+                            resolve({
+                                lat: position.coords.latitude,
+                                lng: position.coords.longitude
+                            });
+                        },
+                        () => resolve(undefined)
+                    );
+                } else {
+                    resolve(undefined);
+                }
+            });
+        }
+
+        function performAIAnalysis(fileId) {
+            isAnalyzing[fileId] = true;
+            filterFiles();
+            
+            // Simulate AI analysis
+            setTimeout(() => {
+                const fileIndex = files.findIndex(f => f.id === fileId);
+                if (fileIndex !== -1) {
+                    const mockAnalysis = generateMockAnalysis(files[fileIndex]);
+                    
+                    files[fileIndex] = {
+                        ...files[fileIndex],
+                        aiAnalysis: mockAnalysis,
+                        verified: true,
+                        priority: mockAnalysis.riskLevel === 'critical' ? 'urgent' : 
+                                 mockAnalysis.riskLevel === 'high' ? 'high' : 'medium',
+                        chainOfCustody: [
+                            ...files[fileIndex].chainOfCustody,
+                            {
+                                action: 'AI analysis completed',
+                                user: 'AI System',
+                                timestamp: new Date(),
+                                details: `Risk level: ${mockAnalysis.riskLevel}, Confidence: ${(mockAnalysis.confidence * 100).toFixed(1)}%`
+                            }
+                        ]
+                    };
+                    
+                    delete isAnalyzing[fileId];
+                    updateStats();
+                    filterFiles();
+                }
+            }, 3000);
+        }
+
+        function generateMockAnalysis(file) {
+            const riskLevels = ['low', 'medium', 'high', 'critical'];
+            const sentiments = ['neutral', 'concerning', 'threatening', 'urgent'];
+            
+            return {
+                sentiment: sentiments[Math.floor(Math.random() * sentiments.length)],
+                confidence: 0.7 + Math.random() * 0.3,
+                keyElements: [
+                    'Evidence markers detected',
+                    'Temporal consistency verified',
+                    'Authenticity indicators found'
+                ],
+                riskLevel: riskLevels[Math.floor(Math.random() * riskLevels.length)],
+                recommendations: [
+                    'Document preservation recommended',
+                    'Consider additional evidence collection',
+                    'Review with legal counsel'
+                ]
+            };
+        }
+
+        function createNewCase() {
+            const title = newCaseTitleInput.value.trim();
+            if (!title) return;
+            
+            const newCase = {
+                id: `case-${Date.now()}`,
+                title: title,
+                status: 'active',
+                priority: 'medium',
+                createdDate: new Date(),
+                lastUpdated: new Date(),
+                fileCount: 0,
+                riskAssessment: 'low'
+            };
+            
+            cases.push(newCase);
+            renderCases();
+            updateStats();
+            
+            // Update case filters
+            updateCaseFilters();
+            
+            newCaseTitleInput.value = '';
+        }
+
+        function updateCaseFilters() {
+            const caseFilter = document.getElementById('case-filter');
+            const caseAssignment = document.getElementById('case-assignment');
+            
+            // Save current values
+            const currentCaseFilter = caseFilter.value;
+            const currentCaseAssignment = caseAssignment.value;
+            
+            // Clear and rebuild options
+            caseFilter.innerHTML = '<option value="all">All Cases</option>';
+            caseAssignment.innerHTML = '<option value="all">No case assignment</option>';
+            
+            cases.forEach(caseItem => {
+                caseFilter.innerHTML += `<option value="${caseItem.id}">${caseItem.title}</option>`;
+                caseAssignment.innerHTML += `<option value="${caseItem.id}">${caseItem.title}</option>`;
+            });
+            
+            // Restore previous selections
+            caseFilter.value = currentCaseFilter;
+            caseAssignment.value = currentCaseAssignment;
+        }
+
+        function switchTab(tabName) {
+            // Hide all tab contents
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            
+            // Show selected tab content
+            document.getElementById(`${tabName}-tab`).classList.add('active');
+            
+            // Update tab buttons
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                if (btn.getAttribute('data-tab') === tabName) {
+                    btn.classList.add('border-b-2', 'border-blue-500', 'text-blue-600');
+                    btn.classList.remove('text-gray-500', 'hover:text-gray-700');
+                } else {
+                    btn.classList.remove('border-b-2', 'border-blue-500', 'text-blue-600');
+                    btn.classList.add('text-gray-500', 'hover:text-gray-700');
+                }
+            });
+            
+            // If switching to cases tab, render cases
+            if (tabName === 'cases') {
+                renderCases();
+            }
+            
+            // If switching to analytics tab, render analytics
+            if (tabName === 'analytics') {
+                renderRiskAssessmentChart();
+                renderEvidenceTypesChart();
+                renderCommonTags();
+                renderCollectionTimeline();
+            }
+        }
+
+        function openFileModal(file) {
+            modalFileName.innerHTML = `
+                ${getFileIcon(file.type, file.priority)}
+                ${file.name}
+                <span class="px-2 py-1 rounded-full text-xs font-medium ${getPriorityBadge(file.priority)} ml-2">
+                    ${file.priority}
+                </span>
+            `;
+            
+            // Set active tab to overview
+            switchModalTab('overview');
+            
+            fileModal.classList.remove('hidden');
+        }
+
+        function closeModal() {
+            fileModal.classList.add('hidden');
+        }
+
+        function switchModalTab(tabName) {
+            // Hide all modal tab contents
+            document.querySelectorAll('.tab-content-modal').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            
+            // Show selected modal tab content
+            document.getElementById(`${tabName}-modal`).classList.add('active');
+            
+            // Update modal tab buttons
+            document.querySelectorAll('.tab-btn-modal').forEach(btn => {
+                if (btn.getAttribute('data-tab') === tabName) {
+                    btn.classList.add('border-b-2', 'border-blue-500', 'text-blue-600');
+                    btn.classList.remove('text-gray-500', 'hover:text-gray-700');
+                } else {
+                    btn.classList.remove('border-b-2', 'border-blue-500', 'text-blue-600');
+                    btn.classList.add('text-gray-500', 'hover:text-gray-700');
+                }
+            });
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            // Render initial data
+            updateStats();
+            renderFiles(files);
+            renderCases();
+            updateCaseFilters();
+            
+            // Set up event listeners
+            searchQueryInput.addEventListener('input', filterFiles);
+            caseFilter.addEventListener('change', filterFiles);
+            typeFilter.addEventListener('change', filterFiles);
+            priorityFilter.addEventListener('change', filterFiles);
+            
+            fileUploadInput.addEventListener('change', handleFileUpload);
+            
+            createCaseBtn.addEventListener('click', createNewCase);
+            newCaseTitleInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    createNewCase();
+                }
+            });
+            
+            // Tab switching
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    switchTab(this.getAttribute('data-tab'));
+                });
+            });
+            
+            // Modal tab switching
+            document.querySelectorAll('.tab-btn-modal').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    switchModalTab(this.getAttribute('data-tab'));
+                });
+            });
+            
+            // Close modal when clicking outside
+            fileModal.addEventListener('click', function(e) {
+                if (e.target === fileModal) {
+                    closeModal();
+                }
+            });
+        });
+    </script>
+</body>
+</html>
