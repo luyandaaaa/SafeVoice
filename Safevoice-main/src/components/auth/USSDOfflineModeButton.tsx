@@ -30,26 +30,40 @@ const blinkAnimation = `@keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.5
 const ussdStyles = `
 ${blinkAnimation}
 .ussd-modal { 
-  display: flex; 
   position: fixed; 
   top: 0; 
   left: 0; 
-  width: 100vw; 
-  height: 100vh; 
+  width: 100%; 
+  height: 100%; 
   background: rgba(0,0,0,0.8); 
-  z-index: 1000; 
-  align-items: center; 
-  justify-content: center; 
+  z-index: 9999;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
 }
 .ussd-modal-content { 
+  position: relative;
+  margin-right: 40px;
   background: linear-gradient(135deg, #2c2c2c 0%, #1a1a1a 100%); 
   width: 320px; 
-  margin: auto; 
   border-radius: 25px; 
   box-shadow: 0 8px 40px rgba(0,0,0,0.5); 
   padding: 20px; 
-  position: relative; 
-  border: 3px solid #444; 
+  border: 3px solid #444;
+  animation: slideIn 0.3s ease-out;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+@keyframes slideIn {
+  from {
+    right: -320px;
+    opacity: 0;
+  }
+  to {
+    right: 40px;
+    opacity: 1;
+  }
 }
 .ussd-modal-header { 
   display: flex; 
@@ -486,7 +500,7 @@ export const USSDModal: React.FC<{
   return (
     <div className="ussd-modal" onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
       <style>{ussdStyles}</style>
-      <div className="ussd-modal-content">
+      <div className="ussd-modal-content" style={{ transform: 'translate(-50%, -50%)', margin: 0 }}>
         <div className="ussd-modal-header">
           <h3 style={{ margin: 0, fontWeight: 700, fontSize: '1.2rem', color: '#fff', textShadow: '1px 1px 2px rgba(0,0,0,0.5)' }}>SafeVoice USSD</h3>
           <button className="ussd-close-modal" onClick={onClose}>&times;</button>

@@ -11,14 +11,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useLanguage, SUPPORTED_LANGUAGES } from "@/contexts/LanguageContext";
 import { useVoice } from "@/contexts/VoiceContext";
-import { BiometricLogin } from "./BiometricLogin";
 import { MFASetup } from "./MFASetup";
 import { useToast } from "@/hooks/use-toast";
 
-// Simulate biometric capture
-function simulateBiometricCapture(type: 'face' | 'fingerprint', userId: string) {
-  return `${type}-biometric-for-${userId}`;
-}
+
 
 // Auth context hook
 const useAuth = () => {
@@ -139,10 +135,6 @@ export const AuthPage = () => {
   });
   const [isLoading, setIsLoading] = useState(false);
   const [showMFA, setShowMFA] = useState(false);
-  const [showBiometricSetup, setShowBiometricSetup] = useState(false);
-  const [pendingBiometricUser, setPendingBiometricUser] = useState<{ email: string; id: string } | null>(null);
-  const [faceRegistered, setFaceRegistered] = useState(false);
-  const [fingerRegistered, setFingerRegistered] = useState(false);
   const [redirectToDashboard, setRedirectToDashboard] = useState(false);
   const [error, setError] = useState<string>("");
 
@@ -167,23 +159,6 @@ export const AuthPage = () => {
   if (isAuthenticated) {
     return <Navigate to="/dashboard" replace />;
   }
-
-  // Biometric registration
-  const handleRegisterBiometric = (type: 'face' | 'fingerprint') => {
-    if (!pendingBiometricUser) return;
-    const key = `${pendingBiometricUser.email}_${type}`;
-    const value = simulateBiometricCapture(type, pendingBiometricUser.id);
-    localStorage.setItem(key, value);
-    if (type === 'face') setFaceRegistered(true);
-    if (type === 'fingerprint') setFingerRegistered(true);
-  };
-
-  const handleFinishBiometric = () => {
-    setShowBiometricSetup(false);
-    setPendingBiometricUser(null);
-    setFaceRegistered(false);
-    setFingerRegistered(false);
-  };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -305,67 +280,60 @@ export const AuthPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-subtle flex items-center justify-center p-4">
-      {showBiometricSetup ? (
-        <Dialog open={showBiometricSetup}>
-          <DialogContent className="w-[96%] max-w-md">
-            <DialogHeader>
-              <DialogTitle>Register Biometrics</DialogTitle>
-              <DialogDescription>
-                Please register both Face ID and Fingerprint to complete your account setup.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="flex flex-col gap-4 py-2">
-              <Button
-                variant={faceRegistered ? "secondary" : "outline"}
-                className="w-full"
-                onClick={() => handleRegisterBiometric('face')}
-                disabled={faceRegistered}
-              >
-                {faceRegistered ? "Face ID Registered" : "Register Face ID"}
-              </Button>
-              <Button
-                variant={fingerRegistered ? "secondary" : "outline"}
-                className="w-full"
-                onClick={() => handleRegisterBiometric('fingerprint')}
-                disabled={fingerRegistered}
-              >
-                {fingerRegistered ? "Fingerprint Registered" : "Register Fingerprint"}
-              </Button>
-              <Button
-                className="w-full"
-                disabled={!(faceRegistered && fingerRegistered)}
-                onClick={handleFinishBiometric}
-              >
-                Finish Setup
-              </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
-      ) : (
-        <div className="w-full max-w-md space-y-6">
-          {/* Logo and Header */}
-          <div className="text-center space-y-4">
-            <div className="flex justify-center">
-              <div className="p-4 bg-gradient-hero rounded-full shadow-glow">
-                <Shield className="h-12 w-12 text-white" />
-              </div>
-            </div>
+    <div style={{
+      minHeight: '100vh',
+      position: 'relative',
+      overflowY: 'auto',
+      display: 'flex',
+      flexDirection: 'column'
+    }}>
+      <div style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        zIndex: 0
+      }}>
+        <img 
+          src="/src/assets/gbv.jpg" 
+          alt="background" 
+          style={{
+            width: '100%',
+            height: '100%',
+            objectFit: 'cover',
+            filter: 'brightness(0.6)'
+          }}
+        />
+      </div>
+      <div style={{
+        position: 'relative',
+        zIndex: 1,
+        flex: 1,
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: '2rem 1rem'
+      }}>
+        <div className="w-full max-w-md space-y-4">
+          {/* Header */}
+          <div className="text-center space-y-4 mb-4">
             <div>
-              <h1 className="text-3xl font-bold bg-gradient-hero bg-clip-text text-transparent">
+              <h1 className="text-3xl font-bold text-white drop-shadow-glow tracking-tight mb-2">
                 SafeVoice AI
               </h1>
-              <p className="text-muted-foreground mt-2">
+              <p className="text-lg text-white/90 font-medium tracking-wide drop-shadow-glow">
                 Breaking the Silence, Saving Lives
               </p>
             </div>
           </div>
 
           {/* Language Selector */}
-          <Card className="shadow-soft">
-            <CardContent className="pt-6">
-              <div className="space-y-2">
-                <Label htmlFor="language">Select Language</Label>
+          <Card className="shadow-xl bg-white/10 backdrop-blur-md border-white/20">
+            <CardContent className="py-3">
+              <div className="space-y-1">
+                <Label htmlFor="language" className="text-white text-sm">Select Language</Label>
                 <Select
                   value={currentLanguage}
                   onValueChange={(value) => setLanguage(value as any)}
@@ -387,25 +355,25 @@ export const AuthPage = () => {
 
           {/* Authentication Forms */}
           {!showMFA ? (
-            <Card className="shadow-soft">
+            <Card className="shadow-xl bg-white/10 backdrop-blur-md border-white/20">
               <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                <TabsList className="grid w-full grid-cols-2">
-                  <TabsTrigger value="login">Login</TabsTrigger>
-                  <TabsTrigger value="register">Register</TabsTrigger>
+                <TabsList className="grid w-full grid-cols-2 bg-white/10">
+                  <TabsTrigger value="login" className="data-[state=active]:bg-white/20 text-white">Login</TabsTrigger>
+                  <TabsTrigger value="register" className="data-[state=active]:bg-white/20 text-white">Register</TabsTrigger>
                 </TabsList>
 
                 {/* Login Tab */}
                 <TabsContent value="login">
                   <CardHeader>
-                    <CardTitle>Welcome Back</CardTitle>
-                    <CardDescription>
+                    <CardTitle className="text-white">Welcome Back</CardTitle>
+                    <CardDescription className="text-white/80">
                       Sign in to continue
                     </CardDescription>
                   </CardHeader>
                   <form onSubmit={handleLogin}>
                     <CardContent className="space-y-4">
                       <div className="space-y-2">
-                        <Label htmlFor="email">Email</Label>
+                        <Label htmlFor="email" className="text-white">Email</Label>
                         <Input
                           id="email"
                           type="email"
@@ -416,7 +384,7 @@ export const AuthPage = () => {
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="password">Password</Label>
+                        <Label htmlFor="password" className="text-white">Password</Label>
                         <div className="relative">
                           <Input
                             id="password"
@@ -464,15 +432,15 @@ export const AuthPage = () => {
                 {/* Register Tab */}
                 <TabsContent value="register">
                   <CardHeader>
-                    <CardTitle>Create Account</CardTitle>
-                    <CardDescription>
+                    <CardTitle className="text-white">Create Account</CardTitle>
+                    <CardDescription className="text-white/80">
                       Join SafeVoice community
                     </CardDescription>
                   </CardHeader>
                   <form onSubmit={handleRegister}>
                     <CardContent className="space-y-4">
                       <div className="space-y-2">
-                        <Label htmlFor="name">Full Name</Label>
+                        <Label htmlFor="name" className="text-white">Full Name</Label>
                         <Input
                           id="name"
                           placeholder="Enter your full name"
@@ -482,7 +450,7 @@ export const AuthPage = () => {
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="reg-email">Email</Label>
+                        <Label htmlFor="reg-email" className="text-white">Email</Label>
                         <Input
                           id="reg-email"
                           type="email"
@@ -493,7 +461,7 @@ export const AuthPage = () => {
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="phone">Phone Number</Label>
+                        <Label htmlFor="phone" className="text-white">Phone Number</Label>
                         <Input
                           id="phone"
                           type="tel"
@@ -504,7 +472,7 @@ export const AuthPage = () => {
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="reg-password">Password</Label>
+                        <Label htmlFor="reg-password" className="text-white">Password</Label>
                         <div className="relative">
                           <Input
                             id="reg-password"
@@ -530,7 +498,7 @@ export const AuthPage = () => {
                         </div>
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="confirm-password">Confirm Password</Label>
+                        <Label htmlFor="confirm-password" className="text-white">Confirm Password</Label>
                         <Input
                           id="confirm-password"
                           type={showPassword ? "text" : "password"}
@@ -541,7 +509,7 @@ export const AuthPage = () => {
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="preferred-language">Preferred Language</Label>
+                        <Label htmlFor="preferred-language" className="text-white">Preferred Language</Label>
                         <Select
                           value={registerData.preferredLanguage}
                           onValueChange={(value) => setRegisterData(prev => ({ ...prev, preferredLanguage: value }))}
@@ -583,15 +551,12 @@ export const AuthPage = () => {
             <MFASetup onComplete={() => setShowMFA(false)} />
           )}
 
-          {/* Biometric Login */}
-          <BiometricLogin />
-
           {/* Offline Mode */}
-          <Card className="shadow-soft">
-            <CardContent className="pt-6">
+          <Card className="shadow-xl bg-white/10 backdrop-blur-md border-white/20">
+            <CardContent className="py-3">
               <Button
                 variant="outline"
-                className="w-full"
+                className="w-full bg-white/20 text-white hover:bg-white/30 hover:text-white border-white/40 font-medium"
                 onClick={() => setShowUSSDModal(true)}
               >
                 Offline Mode (USSD)
@@ -607,7 +572,7 @@ export const AuthPage = () => {
             </div>
           )}
         </div>
-      )}
+      </div>
     </div>
   );
 };

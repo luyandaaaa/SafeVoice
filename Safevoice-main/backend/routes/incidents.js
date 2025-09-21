@@ -155,4 +155,22 @@ router.delete('/:id', auth, async (req, res) => {
   }
 });
 
+// @route   GET /api/incidents/vault/evidence
+// @desc    Get all evidence from user's private vault
+// @access  Private
+router.get('/vault/evidence', auth, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Return the evidence vault array, or empty array if none exists
+    res.json(user.evidenceVault || []);
+  } catch (err) {
+    console.error('Error fetching evidence vault:', err);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
 module.exports = router;

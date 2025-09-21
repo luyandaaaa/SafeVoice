@@ -99,6 +99,7 @@ export const EvidenceVault = () => {
   const [files, setFiles] = useState<EvidenceFile[]>([]);
   const [cases, setCases] = useState<Case[]>([]);
   const [activeTab, setActiveTab] = useState<'overview' | 'upload' | 'cases' | 'analytics' | 'resources'>('overview');
+  const [isLoading, setIsLoading] = useState(true);
   const [selectedCase, setSelectedCase] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState('all');
@@ -120,14 +121,88 @@ export const EvidenceVault = () => {
   
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Fetch evidence from vault
+  const fetchEvidence = async () => {
+    setIsLoading(true);
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        console.error('No authentication token found');
+        return;
+      }
+
+      const response = await fetch('http://localhost:5000/api/incidents/vault/evidence', {
+        headers: {
+          'x-auth-token': token
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch evidence');
+      }
+
+      const evidence = await response.json();
+      
+      // Convert the evidence data to match our EvidenceFile interface
+      const formattedFiles: EvidenceFile[] = evidence.map((item: any) => ({
+        id: item._id,
+        name: item.fileData.filename,
+        type: inferFileType(item.fileData.mimetype),
+        size: item.fileData.size,
+        uploadDate: new Date(item.createdAt),
+        caseId: item.metadata.caseId,
+        encrypted: true,
+        shared: false,
+        verified: true,
+        priority: inferPriority(item.metadata.reportType),
+        tags: item.metadata.tags || [],
+        description: item.metadata.description || '',
+        metadata: {
+          timestamp: new Date(item.metadata.uploadDate),
+          deviceInfo: item.fileData.deviceInfo,
+          location: item.metadata.location
+        },
+        chainOfCustody: [{
+          action: 'File uploaded',
+          user: 'You',
+          timestamp: new Date(item.createdAt),
+          details: 'Added to private vault'
+        }]
+      }));
+
+      setFiles(formattedFiles);
+      console.log('Loaded evidence files:', formattedFiles);
+    } catch (error) {
+      console.error('Error fetching evidence:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Helper function to infer file type from mimetype
+  const inferFileType = (mimetype: string): EvidenceFile['type'] => {
+    if (mimetype.startsWith('image/')) return 'image';
+    if (mimetype.startsWith('video/')) return 'video';
+    if (mimetype.startsWith('audio/')) return 'audio';
+    return 'document';
+  };
+
+  // Helper function to infer priority based on report type
+  const inferPriority = (reportType: string): EvidenceFile['priority'] => {
+    const highPriorityTypes = ['physical-assault', 'sexual-assault'];
+    const mediumPriorityTypes = ['stalking', 'verbal-threat'];
+    return highPriorityTypes.includes(reportType) ? 'high' 
+           : mediumPriorityTypes.includes(reportType) ? 'medium'
+           : 'low';
+  };
+
   // Initialize data
   useEffect(() => {
+    fetchEvidence();
     const initialCases: Case[] = [];
-    const initialFiles: EvidenceFile[] = [];
     const initialAchievements: Achievement[] = [];
 
     setCases(initialCases);
-    setFiles(initialFiles);
     setAchievements(initialAchievements);
   }, []);
 
@@ -851,7 +926,15 @@ export const EvidenceVault = () => {
               </div>
             </CardHeader>
             <CardContent>
-              {filteredFiles.length === 0 ? (
+              {isLoading ? (
+                <div className="text-center py-12">
+                  <Loader2 className="mx-auto h-12 w-12 text-blue-500 animate-spin" />
+                  <h3 className="mt-2 text-xl font-semibold">Loading evidence files...</h3>
+                  <p className="mt-1 text-gray-500">
+                    Please wait while we securely fetch your evidence
+                  </p>
+                </div>
+              ) : filteredFiles.length === 0 ? (
                 <div className="text-center py-12">
                   <FileText className="mx-auto h-12 w-12 text-gray-400" />
                   <h3 className="mt-2 text-xl font-semibold">No evidence files found</h3>

@@ -23,6 +23,7 @@ const defaultUserData = {
   preferredLanguage: 'en',
   biometricEnabled: false,
   incidents: [], // Array to store full incident reports
+  evidenceVault: [], // Array to store private vault evidence
   createdAt: new Date(),
   updatedAt: new Date()
 };
@@ -84,14 +85,37 @@ async function addIncidentToUser(userId, incidentData) {
       createdAt: new Date(),
       updatedAt: new Date()
     };
+
+    // If user consented to vault storage and there are attachments
+    let updateOps = {
+      $push: { incidents: incident },
+      $set: { updatedAt: new Date() }
+    };
+
+    if (incident.consent?.vault && incident.attachments?.length > 0) {
+      // Map attachments to evidence vault format
+      const vaultEntries = incident.attachments.map(attachment => ({
+        _id: new ObjectId(),
+        incidentId: incident._id,
+        fileData: attachment,
+        createdAt: new Date(),
+        metadata: {
+          caseId: incident.id,
+          reportType: incident.type,
+          uploadDate: attachment.uploadedAt,
+          description: incident.description,
+          tags: incident.tags || []
+        }
+      }));
+
+      // Add to evidence vault array
+      updateOps.$push.evidenceVault = { $each: vaultEntries };
+    }
     
-    // Add the incident to the user's incidents array
+    // Add the incident to the user's incidents array and optionally to vault
     const result = await users.updateOne(
       { _id: userObjectId },
-      { 
-        $push: { incidents: incident },
-        $set: { updatedAt: new Date() }
-      }
+      updateOps
     );
     
     if (result.modifiedCount === 0) {
