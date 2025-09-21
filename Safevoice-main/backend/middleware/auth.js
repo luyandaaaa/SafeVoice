@@ -32,6 +32,9 @@ module.exports = async function(req, res, next) {
     // Remove sensitive data before attaching to request
     const { password, ...userWithoutPassword } = user;
     
+    // Add the id field in string format
+    userWithoutPassword.id = userWithoutPassword._id.toString();
+    
     // Attach user data to request
     req.user = userWithoutPassword;
     next();

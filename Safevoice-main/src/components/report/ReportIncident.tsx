@@ -11,9 +11,11 @@ import { Badge } from "@/components/ui/badge";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useVoice } from "@/contexts/VoiceContext";
 import { useToast } from "@/hooks/use-toast";
+import { AttachmentViewer } from "./AttachmentViewer";
 
 interface IncidentReport {
   id: string;
+  _id?: string;
   type: string;
   urgency: string;
   date: string;
@@ -24,9 +26,17 @@ interface IncidentReport {
   witnesses?: string;
   notes?: string;
   anonymous: boolean;
-  attachments: File[];
+  attachments: Array<{
+    filename: string;
+    originalName: string;
+    mimetype: string;
+    size: number;
+    path: string;
+    uploadedAt: Date;
+  }>;
   status: 'draft' | 'submitted' | 'under_review' | 'resolved';
   submittedAt?: Date;
+  createdAt?: string;
   consent?: {
     vault: boolean;
     ngo: boolean;
@@ -90,6 +100,8 @@ export const ReportIncident = () => {
         }
       );
     }
+    // Load initial reports
+    loadReports();
   }, []);
 
   const incidentTypes = [
@@ -113,7 +125,7 @@ export const ReportIncident = () => {
     setReport(prev => ({ ...prev, [field]: value }));
   };
 
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(event.target.files || []);
     const validFiles = files.filter(file => {
       const validTypes = ['image/*', 'video/*', 'audio/*', 'application/pdf', '.doc', '.docx'];
@@ -131,16 +143,45 @@ export const ReportIncident = () => {
       return true;
     });
 
-    setReport(prev => ({
-      ...prev,
-      attachments: [...prev.attachments, ...validFiles]
-    }));
+    try {
+      const formData = new FormData();
+      validFiles.forEach(file => {
+        formData.append('files', file);
+      });
 
-    toast({
-      title: "Files uploaded",
-      description: `${validFiles.length} file(s) added to report`,
-      variant: "default"
-    });
+      const token = localStorage.getItem('token');
+      if (!token) throw new Error('Not authenticated');
+
+      const response = await fetch('http://localhost:5000/api/uploads', {
+        method: 'POST',
+        headers: {
+          'x-auth-token': token
+        },
+        body: formData
+      });
+
+      if (!response.ok) throw new Error('Upload failed');
+
+      const uploadedFiles = await response.json();
+
+      setReport(prev => ({
+        ...prev,
+        attachments: [...prev.attachments, ...uploadedFiles]
+      }));
+
+      toast({
+        title: "Files uploaded",
+        description: `${uploadedFiles.length} file(s) added to report`,
+        variant: "default"
+      });
+    } catch (error) {
+      console.error('Upload error:', error);
+      toast({
+        title: "Upload failed",
+        description: "Failed to upload files. Please try again.",
+        variant: "destructive"
+      });
+    }
   };
 
   const removeAttachment = (index: number) => {
@@ -163,7 +204,7 @@ export const ReportIncident = () => {
         status: 'draft'
       };
 
-      const response = await fetch('http://localhost:5000/api/reports', {
+      const response = await fetch('http://localhost:5000/api/incidents', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -227,7 +268,7 @@ export const ReportIncident = () => {
       };
 
       // Submit to backend
-      const response = await fetch('http://localhost:5000/api/reports', {
+      const response = await fetch('http://localhost:5000/api/incidents', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -264,6 +305,14 @@ export const ReportIncident = () => {
         consent: { vault: false, ngo: false, court: false },
         progress: 0
       });
+
+      // Close the form and refresh reports
+      setShowNewReportForm(false);
+      loadReports(); // Fetch updated reports
+
+      if (isVoiceEnabled) {
+        speak("Your report has been submitted successfully. Case ID: " + chainId);
+      }
     } catch (error) {
       console.error('Error submitting report:', error);
       toast({
@@ -271,13 +320,6 @@ export const ReportIncident = () => {
         description: "Failed to submit report. Please try again.",
         variant: "destructive"
       });
-      setCaseId(chainId);
-      setShowNewReportForm(false);
-      setLoadedDraftId(null);
-      
-      if (isVoiceEnabled) {
-        speak("Your report has been saved securely. Case ID: " + chainId);
-      }
     } finally {
       setIsSubmitting(false);
     }
@@ -287,17 +329,68 @@ export const ReportIncident = () => {
   const loadReports = async () => {
     try {
       const token = localStorage.getItem('token');
+      console.log('Token:', token ? 'Present' : 'Missing');
       if (!token) return;
 
-      const response = await fetch('http://localhost:5000/api/reports', {
+      // Decode token to check userId
+      try {
+        const base64Url = token.split('.')[1];
+        const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+        const tokenData = JSON.parse(window.atob(base64));
+        console.log('Token data:', tokenData);
+      } catch (e) {
+        console.error('Error decoding token:', e);
+      }
+
+      // Get all reports (both submitted and drafts) from incidents collection
+      const response = await fetch('http://localhost:5000/api/incidents/user', {
         headers: {
           'x-auth-token': token
         }
       });
 
+      console.log('API Response status:', response.status);
+      const responseText = await response.text();
+      console.log('API Response body:', responseText);
+
       if (response.ok) {
-        const data = await response.json();
-        setSavedReports(data);
+        const data = JSON.parse(responseText);
+        
+        // Convert the data to match our IncidentReport interface
+        const formattedReports = data.map((report: any) => ({
+          ...report,
+          id: report._id,
+          type: report.type,
+          urgency: report.urgency,
+          date: report.date,
+          time: report.time,
+          location: report.location?.address || report.location,
+          description: report.description,
+          perpetrator: report.perpetrator || '',
+          witnesses: report.witnesses || '',
+          notes: report.notes || '',
+          anonymous: report.anonymous || false,
+          attachments: report.attachments?.map(attachment => ({
+            filename: attachment.filename,
+            originalName: attachment.originalName,
+            mimetype: attachment.mimetype,
+            size: attachment.size,
+            path: attachment.path,
+            uploadedAt: new Date(attachment.uploadedAt)
+          })) || [],
+          status: report.status || 'submitted',
+          submittedAt: report.submittedAt ? new Date(report.submittedAt) : undefined,
+          createdAt: report.createdAt,
+          consent: report.consent || { vault: false, ngo: false, court: false },
+          progress: report.progress || 0
+        }));
+
+        console.log('Loaded reports:', formattedReports); // Debug log
+        
+        // Sort reports by creation date
+        setSavedReports(formattedReports.sort((a: any, b: any) => 
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        ));
       }
     } catch (error) {
       console.error('Error loading reports:', error);
@@ -319,7 +412,7 @@ export const ReportIncident = () => {
       const token = localStorage.getItem('token');
       if (!token) return;
 
-      const response = await fetch(`http://localhost:5000/api/reports/${draftId}`, {
+      const response = await fetch(`http://localhost:5000/api/incidents/${draftId}`, {
         headers: {
           'x-auth-token': token
         }
@@ -346,8 +439,34 @@ export const ReportIncident = () => {
     }
   };
 
-  const handleViewDetails = (report: IncidentReport) => {
-    setSelectedReport(report);
+  const handleViewDetails = (report: any) => {
+    // Convert MongoDB document to our interface format
+    const formattedReport: IncidentReport = {
+      id: report._id,
+      type: report.type,
+      urgency: report.urgency,
+      date: report.date,
+      time: report.time,
+      location: report.location?.address || report.location,
+      description: report.description,
+      perpetrator: report.perpetrator,
+      witnesses: report.witnesses,
+      notes: report.notes,
+      anonymous: report.anonymous,
+      attachments: report.attachments?.map(attachment => ({
+        filename: attachment.filename,
+        originalName: attachment.originalName,
+        mimetype: attachment.mimetype,
+        size: attachment.size,
+        path: attachment.path,
+        uploadedAt: new Date(attachment.uploadedAt)
+      })) || [],
+      status: report.status || 'submitted',
+      submittedAt: new Date(report.createdAt),
+      consent: report.consent,
+      progress: report.progress
+    };
+    setSelectedReport(formattedReport);
     setShowDetails(true);
   };
 
@@ -356,7 +475,7 @@ export const ReportIncident = () => {
       const token = localStorage.getItem('token');
       if (!token) return;
 
-      const response = await fetch(`http://localhost:5000/api/reports/${id}`, {
+      const response = await fetch(`http://localhost:5000/api/incidents/${id}`, {
         method: 'DELETE',
         headers: {
           'x-auth-token': token
@@ -426,45 +545,48 @@ export const ReportIncident = () => {
       </div>
 
       {/* Recent Incidents */}
-      {savedReports.filter(r => r.status !== 'draft').length > 0 && (
-        <div className="px-4 md:px-8 mb-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Recent Incidents</CardTitle>
-              <CardDescription>Your most recent submitted reports</CardDescription>
-            </CardHeader>
-            <CardContent>
+      <div className="px-4 md:px-8 mb-4">
+        <Card>
+          <CardHeader>
+            <CardTitle>Recent Incidents</CardTitle>
+            <CardDescription>Your most recent submitted reports</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {savedReports.filter(r => r.status === 'submitted' || r.status === 'under_review' || r.status === 'resolved').length === 0 ? (
+              <div className="text-center py-8">
+                <AlertTriangle className="h-10 w-10 mx-auto text-muted-foreground mb-4" />
+                <p className="text-lg font-semibold">No reports yet</p>
+                <p className="text-muted-foreground">Your submitted reports will appear here</p>
+              </div>
+            ) : (
               <div className="space-y-3">
                 {savedReports
-                  .filter(r => r.status !== 'draft')
-                  .sort((a, b) => new Date(b.submittedAt || 0).getTime() - new Date(a.submittedAt || 0).getTime())
-                  .slice(0, 5)
+                  .filter(r => r.status === 'submitted' || r.status === 'under_review' || r.status === 'resolved')
+                  .sort((a, b) => new Date(b.submittedAt || b.createdAt || 0).getTime() - new Date(a.submittedAt || a.createdAt || 0).getTime())
                   .map((report) => (
-                    <div key={report.id} className="flex items-center justify-between p-4 border rounded-lg">
+                    <div key={report._id} className="flex items-center justify-between p-4 border rounded-lg">
                       <div className="space-y-1">
                         <div className="flex items-center gap-2">
-                          <p className="font-medium">Case ID: {report.id}</p>
-                          <Badge variant={report.status === 'submitted' ? 'secondary' : report.status === 'under_review' ? 'destructive' : 'default'}>
-                            {report.status.replace('_', ' ').toUpperCase()}
+                          <p className="font-medium">Type: {incidentTypes.find(t => t.value === report.type)?.label}</p>
+                          <Badge variant={report.urgency === 'immediate' ? 'destructive' : report.urgency === 'high' ? 'secondary' : 'default'}>
+                            {report.urgency.toUpperCase()}
                           </Badge>
                         </div>
                         <p className="text-sm text-muted-foreground">
-                          {incidentTypes.find(t => t.value === report.type)?.label} - {report.urgency}
+                          {report.description.substring(0, 100)}{report.description.length > 100 ? '...' : ''}
                         </p>
-                        {report.submittedAt && (
-                          <p className="text-xs text-muted-foreground">
-                            Date reported: {new Date(report.submittedAt).toLocaleDateString()}
-                          </p>
-                        )}
+                        <p className="text-xs text-muted-foreground">
+                          Reported: {new Date(report.createdAt).toLocaleDateString()} at {new Date(report.createdAt).toLocaleTimeString()}
+                        </p>
                       </div>
                       <Button variant="outline" size="sm" onClick={() => handleViewDetails(report)}>View</Button>
                     </div>
                   ))}
               </div>
-            </CardContent>
-          </Card>
-        </div>
-      )}
+            )}
+          </CardContent>
+        </Card>
+      </div>
 
       {/* Main Form Container */}
       <div className="space-y-6 px-4 md:px-8">
@@ -695,7 +817,7 @@ export const ReportIncident = () => {
                         <div key={index} className="flex items-center justify-between p-2 border rounded">
                           <div className="flex items-center gap-2">
                             <FileText className="h-4 w-4" />
-                            <span className="text-sm">{file.name}</span>
+                            <span className="text-sm">{file.filename}</span>
                             <Badge variant="secondary" className="text-xs">
                               {(file.size / (1024 * 1024)).toFixed(1)}MB
                             </Badge>
@@ -842,11 +964,11 @@ export const ReportIncident = () => {
               {selectedReport.attachments && selectedReport.attachments.length > 0 && (
                 <div>
                   <strong>Attachments:</strong>
-                  <ul className="list-disc ml-6">
-                    {selectedReport.attachments.map((file, idx) => (
-                      <li key={idx}>{file.name} ({(file.size / (1024 * 1024)).toFixed(1)}MB)</li>
+                  <div className="space-y-4 mt-4">
+                    {selectedReport.attachments.map((attachment, idx) => (
+                      <AttachmentViewer key={attachment.filename || idx} attachment={attachment} />
                     ))}
-                  </ul>
+                  </div>
                 </div>
               )}
               {selectedReport.consent && (

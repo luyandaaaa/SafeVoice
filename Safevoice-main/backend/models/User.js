@@ -22,6 +22,7 @@ const defaultUserData = {
   phone: '',
   preferredLanguage: 'en',
   biometricEnabled: false,
+  incidents: [], // Array to store full incident reports
   createdAt: new Date(),
   updatedAt: new Date()
 };
@@ -70,6 +71,60 @@ function validateUserData(userData) {
   return errors;
 }
 
+// Add an incident to a user's document
+async function addIncidentToUser(userId, incidentData) {
+  try {
+    const users = getUsers();
+    const userObjectId = new ObjectId(userId);
+    
+    // Create a new incident object with a generated ID
+    const incident = {
+      _id: new ObjectId(), // Generate a new ObjectId for the incident
+      ...incidentData,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+    
+    // Add the incident to the user's incidents array
+    const result = await users.updateOne(
+      { _id: userObjectId },
+      { 
+        $push: { incidents: incident },
+        $set: { updatedAt: new Date() }
+      }
+    );
+    
+    if (result.modifiedCount === 0) {
+      throw new Error('User not found or incident not added');
+    }
+    
+    return incident;
+  } catch (error) {
+    console.error('Error adding incident to user:', error);
+    throw error;
+  }
+}
+
+// Get all incidents for a user
+async function getUserIncidents(userId) {
+  try {
+    const users = getUsers();
+    const user = await users.findOne(
+      { _id: new ObjectId(userId) },
+      { projection: { incidents: 1 } }
+    );
+    
+    if (!user) {
+      throw new Error('User not found');
+    }
+    
+    return user.incidents || [];
+  } catch (error) {
+    console.error('Error getting user incidents:', error);
+    throw error;
+  }
+}
+
 // Create a new user
 async function create(userData) {
   const users = getUsers();
@@ -96,6 +151,7 @@ async function create(userData) {
     ...userData,
     email: userData.email.toLowerCase(),
     password: hashedPassword,
+    incidents: [], // Initialize empty incidents array
     createdAt: new Date(),
     updatedAt: new Date()
   };
@@ -119,5 +175,7 @@ module.exports = {
   findByEmail,
   create,
   matchPassword,
-  defaultUserData
+  defaultUserData,
+  addIncidentToUser,
+  getUserIncidents
 };
