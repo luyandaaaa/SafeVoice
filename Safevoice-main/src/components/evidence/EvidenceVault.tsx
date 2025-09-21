@@ -122,197 +122,9 @@ export const EvidenceVault = () => {
 
   // Initialize data
   useEffect(() => {
-    const initialCases: Case[] = [
-      {
-        id: 'case-1',
-        title: 'Domestic Violence Case #2024-001',
-        status: 'active',
-        priority: 'high',
-        createdDate: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000),
-        lastUpdated: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
-        fileCount: 8,
-        riskAssessment: 'high'
-      },
-      {
-        id: 'case-2',
-        title: 'Workplace Harassment Investigation',
-        status: 'active',
-        priority: 'medium',
-        createdDate: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000),
-        lastUpdated: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
-        fileCount: 3,
-        riskAssessment: 'medium'
-      }
-    ];
-
-    const initialFiles: EvidenceFile[] = [
-      {
-        id: '1',
-        name: 'Threatening_Messages_Screenshot.png',
-        type: 'screenshot',
-        size: 1024 * 1024 * 2.5,
-        uploadDate: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
-        caseId: 'case-1',
-        encrypted: true,
-        shared: false,
-        verified: true,
-        priority: 'high',
-        tags: ['harassment', 'text-messages', 'threats'],
-        description: 'Screenshots of threatening text messages from perpetrator',
-        aiAnalysis: {
-          sentiment: 'threatening',
-          confidence: 0.95,
-          keyElements: ['explicit threats', 'intimidation language', 'personal information'],
-          riskLevel: 'high',
-          recommendations: ['Immediate safety measures', 'Contact authorities', 'Document location'],
-          extractedText: 'I know where you live... You better watch your back...',
-          emotions: ['anger', 'intimidation'],
-          persons: ['John Doe'],
-          locations: ['Home address mentioned']
-        },
-        metadata: {
-          timestamp: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
-          deviceInfo: 'iPhone 14 Pro',
-          coordinates: { lat: -26.2041, lng: 28.0473 }
-        },
-        chainOfCustody: [
-          {
-            action: 'File uploaded',
-            user: 'Sarah M.',
-            timestamp: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
-            details: 'Original screenshot captured and uploaded'
-          },
-          {
-            action: 'AI analysis completed',
-            user: 'System',
-            timestamp: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000 + 5 * 60 * 1000)
-          }
-        ]
-      },
-      {
-        id: '2',
-        name: 'Emergency_Call_Recording.mp3',
-        type: 'recording',
-        size: 1024 * 1024 * 12.3,
-        uploadDate: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
-        caseId: 'case-1',
-        encrypted: true,
-        shared: true,
-        verified: true,
-        priority: 'urgent',
-        tags: ['emergency-call', 'verbal-abuse', '911-call'],
-        description: 'Emergency call recording during incident',
-        aiAnalysis: {
-          sentiment: 'urgent',
-          confidence: 0.92,
-          keyElements: ['distress signals', 'background violence sounds', 'clear victim identification'],
-          riskLevel: 'critical',
-          recommendations: ['Immediate intervention required', 'Medical assistance', 'Police dispatch'],
-          emotions: ['fear', 'panic', 'distress'],
-          persons: ['Victim voice identified', 'Male aggressor voice']
-        },
-        metadata: {
-          timestamp: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
-          deviceInfo: 'Samsung Galaxy S23',
-          location: 'Emergency services'
-        },
-        chainOfCustody: [
-          {
-            action: 'Recording obtained',
-            user: 'Emergency Services',
-            timestamp: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000)
-          },
-          {
-            action: 'Uploaded to vault',
-            user: 'Detective Johnson',
-            timestamp: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000)
-          }
-        ]
-      },
-      {
-        id: '3',
-        name: 'Medical_Examination_Photos.jpg',
-        type: 'image',
-        size: 1024 * 1024 * 4.2,
-        uploadDate: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
-        caseId: 'case-1',
-        encrypted: true,
-        shared: true,
-        verified: true,
-        priority: 'high',
-        tags: ['medical-evidence', 'injuries', 'forensic-photos'],
-        description: 'Medical examination photographs documenting injuries',
-        aiAnalysis: {
-          sentiment: 'concerning',
-          confidence: 0.88,
-          keyElements: ['visible injuries', 'defensive wounds', 'pattern analysis'],
-          riskLevel: 'high',
-          recommendations: ['Medical documentation', 'Forensic analysis', 'Pattern matching']
-        },
-        metadata: {
-          timestamp: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000),
-          deviceInfo: 'Medical camera system',
-          location: 'City General Hospital'
-        },
-        chainOfCustody: [
-          {
-            action: 'Photos taken',
-            user: 'Dr. Smith, MD',
-            timestamp: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000)
-          },
-          {
-            action: 'Forensic review',
-            user: 'Forensic Team',
-            timestamp: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
-          }
-        ]
-      }
-    ];
-
-    const initialAchievements: Achievement[] = [
-      {
-        id: 'ach-1',
-        title: 'First Upload',
-        description: 'Uploaded your first evidence file',
-        icon: <Upload className="w-5 h-5" />,
-        xp: 10,
-        unlocked: true,
-        dateUnlocked: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000)
-      },
-      {
-        id: 'ach-2',
-        title: 'Evidence Collector',
-        description: 'Uploaded 5 evidence files',
-        icon: <FileText className="w-5 h-5" />,
-        xp: 25,
-        unlocked: false
-      },
-      {
-        id: 'ach-3',
-        title: 'Case Manager',
-        description: 'Created your first case',
-        icon: <Shield className="w-5 h-5" />,
-        xp: 15,
-        unlocked: true,
-        dateUnlocked: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000)
-      },
-      {
-        id: 'ach-4',
-        title: 'GBV Advocate',
-        description: 'Completed the GBV awareness quiz',
-        icon: <Award className="w-5 h-5" />,
-        xp: 30,
-        unlocked: false
-      },
-      {
-        id: 'ach-5',
-        title: 'Verified Evidence',
-        description: 'Had 5 files verified by AI',
-        icon: <FileCheck className="w-5 h-5" />,
-        xp: 20,
-        unlocked: false
-      }
-    ];
+    const initialCases: Case[] = [];
+    const initialFiles: EvidenceFile[] = [];
+    const initialAchievements: Achievement[] = [];
 
     setCases(initialCases);
     setFiles(initialFiles);
@@ -320,60 +132,7 @@ export const EvidenceVault = () => {
   }, []);
 
   // GBV Resources
-  const gbvResources: Resource[] = [
-    {
-      id: 'res-1',
-      title: "No Visible Bruises",
-      type: 'book',
-      description: "Explores the epidemic of domestic violence and how we can address it",
-      url: "https://www.goodreads.com/book/show/33786693-no-visible-bruises",
-      author: "Rachel Louise Snyder",
-      recommended: true
-    },
-    {
-      id: 'res-2',
-      title: "Understanding Gender-Based Violence (TED Talk)",
-      type: 'video',
-      description: "Insightful talk about the roots and impacts of GBV",
-      url: "https://www.ted.com/talks/angela_macdougall_4_ways_men_relate_to_violence_against_women",
-      duration: "18 min",
-      recommended: true
-    },
-    {
-      id: 'res-3',
-      title: "The Trauma Therapist Podcast",
-      type: 'podcast',
-      description: "Discusses trauma-informed approaches to supporting survivors",
-      url: "https://www.youtube.com/c/TheTraumaTherapistProject",
-      recommended: false
-    },
-    {
-      id: 'res-4',
-      title: "National Domestic Violence Hotline",
-      type: 'organization',
-      description: "24/7 support for domestic violence survivors",
-      url: "https://www.thehotline.org/",
-      recommended: true
-    },
-    {
-      id: 'res-5',
-      title: "See What You Made Me Do",
-      type: 'book',
-      description: "Powerful investigation into domestic abuse and coercive control",
-      url: "https://www.goodreads.com/book/show/45892208-see-what-you-made-me-do",
-      author: "Jess Hill",
-      recommended: true
-    },
-    {
-      id: 'res-6',
-      title: "The Body Keeps the Score",
-      type: 'book',
-      description: "Understanding trauma and its effects on the body and mind",
-      url: "https://www.goodreads.com/book/show/18693771-the-body-keeps-the-score",
-      author: "Bessel van der Kolk",
-      recommended: true
-    }
-  ];
+  const gbvResources: Resource[] = [];
 
   // Filter files based on search and filters
   const filteredFiles = files.filter(file => {
@@ -752,8 +511,7 @@ export const EvidenceVault = () => {
               </div>
               <Progress 
                 value={percentage} 
-                className="h-2" 
-                indicatorClassName={getRiskColor(risk)}
+                className={`h-2 ${getRiskColor(risk)}`}
               />
             </div>
           );
@@ -789,8 +547,7 @@ export const EvidenceVault = () => {
               </div>
               <Progress 
                 value={percentage} 
-                className="h-2" 
-                indicatorClassName="bg-blue-500"
+                className="h-2 bg-blue-500"
               />
             </div>
           );

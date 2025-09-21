@@ -63,6 +63,30 @@ router.get('/user', auth, async (req, res) => {
   }
 });
 
+// @route   GET /api/incidents/count
+// @desc    Get count of submitted incidents for the authenticated user
+// @access  Private
+router.get('/count', auth, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    
+    // Count only submitted incidents (not drafts)
+    const count = user.incidents ? user.incidents.filter(incident => 
+      incident.status === 'submitted' || 
+      incident.status === 'under_review' || 
+      incident.status === 'resolved'
+    ).length : 0;
+    
+    res.json({ count });
+  } catch (err) {
+    console.error('Error counting incidents:', err);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
 // @route   GET /api/incidents/:id
 // @desc    Get incident by ID
 // @access  Private

@@ -56,22 +56,32 @@ export const Dashboard = () => {
         const token = localStorage.getItem('token');
         if (!token) return;
 
-        const response = await fetch('http://localhost:5000/api/users/stats', {
+        // Fetch user's stats
+        const statsResponse = await fetch('http://localhost:5000/api/users/stats', {
           headers: {
             'x-auth-token': token
           }
         });
 
-        if (response.ok) {
-          const data = await response.json();
+        // Fetch user's reports count
+        const reportsResponse = await fetch('http://localhost:5000/api/incidents/count', {
+          headers: {
+            'x-auth-token': token
+          }
+        });
+
+        if (statsResponse.ok && reportsResponse.ok) {
+          const statsData = await statsResponse.json();
+          const reportsData = await reportsResponse.json();
+          
           setStats(prevStats => ({
             ...prevStats,
-            activeAlerts: data.activeAlerts || 0,
-            reportsSubmitted: data.totalReports || 0,
-            safeLocations: data.safeLocations || 0,
-            riskAreas: data.riskAreas || 0,
-            communityMembers: data.communityMembers || 0,
-            responseTime: data.averageResponseTime || "0 min"
+            activeAlerts: statsData.activeAlerts || 0,
+            reportsSubmitted: reportsData.count || 0, // Use actual reports count
+            safeLocations: statsData.safeLocations || 0,
+            riskAreas: statsData.riskAreas || 0,
+            communityMembers: statsData.communityMembers || 0,
+            responseTime: statsData.averageResponseTime || "0 min"
           }));
         }
       } catch (error) {
