@@ -19,6 +19,7 @@ import { useVoice } from "@/contexts/VoiceContext";
 import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
+import { getRole, setRole } from '@/lib/role';
 
 interface DashboardStats {
   activeAlerts: number;
@@ -48,6 +49,7 @@ export const Dashboard = () => {
     communityMembers: 0,
     responseTime: "0 min"
   });
+  const role = getRole(); // Just read the role, don't allow changing it
 
   // Fetch user's stats when dashboard loads
   useEffect(() => {
@@ -394,6 +396,29 @@ export const Dashboard = () => {
           </div>
         </CardContent>
       </Card>
+
+      {/* Reviewer UI: Show if role is reviewer */}
+      {role === 'reviewer' && (
+        <Card className="shadow-soft border-blue-300 bg-blue-50">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <FileText className="h-5 w-5 text-blue-600" />
+              Review Reports & Cases
+            </CardTitle>
+            <CardDescription>
+              You are logged in as a reviewer. Here you can review submitted reports and cases.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {/* Reviewer actions/components go here */}
+            <div className="space-y-2">
+              <Button variant="outline" className="w-full mb-2">View Pending Reports</Button>
+              <Button variant="outline" className="w-full mb-2">View All Cases</Button>
+              <Button variant="default" className="w-full">Approve/Reject Reports</Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
       <div className="h-6" />
     </div>
   );

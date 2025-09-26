@@ -13,6 +13,7 @@ import { Dashboard } from "@/components/dashboard/Dashboard";
 import { AIChat } from "@/components/chat/AIChat";
 import { Card } from "@/components/ui/card";
 import NotFound from "./pages/NotFound";
+import Index from "./pages/Index";
 import { ReportIncident } from "@/components/report/ReportIncident";
 import { LegalAssistance } from "@/components/legal/LegalAssistance";
 import { Community } from "@/components/community/Community";
@@ -64,8 +65,9 @@ const App = () => {
               <BrowserRouter>
                 <Routes>
                   {/* Public routes */}
+                  <Route path="/" element={<Index />} />
+                  <Route path="/role-select" element={<Index />} />
                   <Route path="/auth" element={<AuthPage />} />
-                  <Route path="/" element={<Navigate to="/dashboard" replace />} />
                   
                   {/* Protected Routes */}
                   <Route path="/dashboard" element={

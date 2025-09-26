@@ -519,42 +519,58 @@ export const Resources = () => {
   };
 
   const startQuiz = (quiz: Quiz) => {
-    setCurrentQuiz(quiz);
+    // Reset all quiz state before starting
     setCurrentQuestionIndex(0);
     setSelectedAnswer(null);
     setShowQuizResult(false);
     setQuizScore(0);
-    setShowQuizDialog(true);
     setShowAnswerFeedback(false);
     setAnswerWasCorrect(null);
+    setTimerActive(false);
     setTimer(quiz.questions.length * 20); // 20 seconds per question
-    setTimerActive(true);
+    
+    // Update quiz state first
+    setCurrentQuiz(quiz);
+
+    // Then show dialog and start timer in next frame
+    requestAnimationFrame(() => {
+      setShowQuizDialog(true);
+      setTimerActive(true);
+    });
   };
 
-  // Timer effect (no dialog flicker)
+  // Timer effect
   useEffect(() => {
-    if (!showQuizDialog || !timerActive) return;
-    if (timer <= 0) {
-      setTimerActive(false);
-      setShowQuizResult(true);
-      return;
-    }
-    const intervalRef = { current: null as NodeJS.Timeout | null };
-    intervalRef.current = setInterval(() => {
-      setTimer((t) => {
-        if (t <= 1) {
-          clearInterval(intervalRef.current!);
+    let timeoutId: NodeJS.Timeout;
+    let intervalId: NodeJS.Timeout;
+
+    if (showQuizDialog && currentQuiz && timerActive) {
+      // Start the timer with a small delay to ensure smooth dialog transition
+      timeoutId = setTimeout(() => {
+        if (timer <= 0) {
           setTimerActive(false);
           setShowQuizResult(true);
-          return 0;
+          return;
         }
-        return t - 1;
-      });
-    }, 1000);
+
+        intervalId = setInterval(() => {
+          setTimer((t) => {
+            if (t <= 1) {
+              setTimerActive(false);
+              setShowQuizResult(true);
+              return 0;
+            }
+            return t - 1;
+          });
+        }, 1000);
+      }, 100);
+    }
+
     return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current);
+      if (timeoutId) clearTimeout(timeoutId);
+      if (intervalId) clearInterval(intervalId);
     };
-  }, [showQuizDialog, timerActive]);
+  }, [showQuizDialog, currentQuiz, timerActive, timer]);
 
   const selectAnswer = (answerIndex: number) => {
     setSelectedAnswer(answerIndex);
@@ -881,7 +897,24 @@ export const Resources = () => {
                   </Badge>
                 </div>
                 <Button 
-                  onClick={() => startQuiz(quiz)}
+                  onClick={() => {
+                    // Reset all quiz state first
+                    setCurrentQuestionIndex(0);
+                    setSelectedAnswer(null);
+                    setShowQuizResult(false);
+                    setQuizScore(0);
+                    setShowAnswerFeedback(false);
+                    setAnswerWasCorrect(null);
+                    setTimer(quiz.questions.length * 20);
+                    setTimerActive(false);
+                    setCurrentQuiz(quiz);
+                    // Show dialog in next frame
+                    requestAnimationFrame(() => {
+                      setShowQuizDialog(true);
+                      // Start timer after dialog is shown
+                      setTimeout(() => setTimerActive(true), 100);
+                    });
+                  }}
                   disabled={quiz.completed}
                   className="w-full bg-gradient-to-r from-red-500 to-pink-500 text-white font-bold hover:bg-pink-600"
                   variant="default"
@@ -895,102 +928,114 @@ export const Resources = () => {
       </div>
 
       {/* Quiz Dialog */}
-      <Dialog open={showQuizDialog} onOpenChange={setShowQuizDialog}>
-        <DialogContent className="max-w-2xl">
-          {/* Accessibility: DialogTitle required for screen readers */}
-          <DialogHeader>
-            <DialogTitle>{currentQuiz ? currentQuiz.title : 'Quiz'}</DialogTitle>
-          </DialogHeader>
-          {currentQuiz && !showQuizResult && (
-            <div>
-              <div className="flex justify-between items-center mb-2">
-                {/* Title is now in DialogTitle above for accessibility */}
-                <span />
-                <Badge className={timer < 10 ? 'bg-red-500 text-white' : 'bg-blue-500 text-white'}>
-                  <Clock size={14} className="mr-1" /> {timer}s
-                </Badge>
-              </div>
-              <Progress value={((currentQuestionIndex) / currentQuiz.questions.length) * 100} className="mb-2" />
-              <div className="mb-4">
-                <span className="text-sm">Question {currentQuestionIndex + 1} of {currentQuiz.questions.length}</span>
-              </div>
-              <div className="mb-4">
-                <h3 className="text-lg font-semibold">{currentQuiz.questions[currentQuestionIndex].question}</h3>
-              </div>
-              <div className="space-y-3">
-                {currentQuiz.questions[currentQuestionIndex].options.map((option, index) => (
-                  <button
-                    key={index}
-                    onClick={() => selectAnswer(index)}
-                    disabled={selectedAnswer !== null || showAnswerFeedback}
-                    className={`w-full p-4 text-left rounded-lg border transition-colors ${
-                      selectedAnswer === index
-                        ? 'border-blue-500 bg-blue-50'
-                        : 'border-gray-200 hover:border-gray-300'
-                    }`}
-                  >
-                    {option}
-                  </button>
-                ))}
-              </div>
-              <div className="flex justify-between mt-6">
-                <Button variant="outline" onClick={() => setShowQuizDialog(false)}>
-                  Exit Quiz
-                </Button>
-                <Button 
-                  onClick={submitAnswer}
-                  disabled={selectedAnswer === null || showAnswerFeedback}
-                >
-                  Submit
-                </Button>
-              </div>
-              {/* Feedback after answer */}
-              {showAnswerFeedback && (
-                <div className="mt-6 p-4 rounded-lg border bg-gray-50">
-                  {answerWasCorrect ? (
-                    <div className="text-green-600 font-semibold flex items-center gap-2">
-                      <CheckCircle size={20} /> Correct!
-                    </div>
-                  ) : (
-                    <div className="text-red-600 font-semibold flex items-center gap-2">
-                      <AlertTriangle size={20} /> Incorrect. <span className="ml-2">Correct answer: <b>{currentQuiz.questions[currentQuestionIndex].options[currentQuiz.questions[currentQuestionIndex].correct]}</b></span>
-                    </div>
-                  )}
-                  <div className="mt-2 text-gray-700 text-sm">
-                    {currentQuiz.questions[currentQuestionIndex].explanation}
-                  </div>
-                  <div className="flex justify-end mt-4">
-                    <Button onClick={nextQuestion}>
-                      {currentQuestionIndex === currentQuiz.questions.length - 1 ? 'Finish Quiz' : 'Next Question'}
-                    </Button>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-          {/* Quiz Result */}
-          {currentQuiz && showQuizResult && (
-            <div className="text-center space-y-6">
-              <h2 className="text-2xl font-bold">Quiz Complete!</h2>
-              <div className="text-6xl font-bold text-green-500">
-                {Math.round((quizScore / currentQuiz.questions.length) * 100)}%
-              </div>
+        {showQuizDialog && currentQuiz && (
+          <Dialog 
+            open={showQuizDialog} 
+            onOpenChange={(open) => {
+              setShowQuizDialog(open);
+              if (!open) {
+                setTimerActive(false);
+                setCurrentQuiz(null);
+              }
+            }}
+          >
+            <DialogContent className="max-w-2xl">
+              <DialogHeader>
+                <DialogTitle>{currentQuiz.title}</DialogTitle>
+                <DialogDescription>
+                  {`Answer the following questions to test your knowledge. You have ${timer} seconds per quiz.`}
+                </DialogDescription>
+              </DialogHeader>
+              {!showQuizResult && (
               <div>
-                <p className="text-lg">You scored {quizScore} out of {currentQuiz.questions.length}</p>
-                <p className="text-sm text-gray-600">Earned {Math.floor((quizScore / currentQuiz.questions.length) * currentQuiz.points)} points</p>
+                <div className="flex justify-between items-center mb-2">
+                  <span />
+                  <Badge className={timer < 10 ? 'bg-red-500 text-white' : 'bg-blue-500 text-white'}>
+                    <Clock size={14} className="mr-1" /> {timer}s
+                  </Badge>
+                </div>
+                <Progress value={((currentQuestionIndex) / currentQuiz.questions.length) * 100} className="mb-2" />
+                <div className="mb-4">
+                  <span className="text-sm">Question {currentQuestionIndex + 1} of {currentQuiz.questions.length}</span>
+                </div>
+                <div className="mb-4">
+                  <h3 className="text-lg font-semibold">{currentQuiz.questions[currentQuestionIndex].question}</h3>
+                </div>
+                <div className="space-y-3">
+                  {currentQuiz.questions[currentQuestionIndex].options.map((option, index) => (
+                    <button
+                      key={index}
+                      onClick={() => selectAnswer(index)}
+                      disabled={selectedAnswer !== null || showAnswerFeedback}
+                      className={`w-full p-4 text-left rounded-lg border transition-colors ${
+                        selectedAnswer === index
+                          ? 'border-blue-500 bg-blue-50'
+                          : 'border-gray-200 hover:border-gray-300'
+                      }`}
+                    >
+                      {option}
+                    </button>
+                  ))}
+                </div>
+                <div className="flex justify-between mt-6">
+                  <Button variant="outline" onClick={() => setShowQuizDialog(false)}>
+                    Exit Quiz
+                  </Button>
+                  <Button 
+                    onClick={submitAnswer}
+                    disabled={selectedAnswer === null || showAnswerFeedback}
+                  >
+                    Submit
+                  </Button>
+                </div>
+                {/* Feedback after answer */}
+                {showAnswerFeedback && (
+                  <div className="mt-6 p-4 rounded-lg border bg-gray-50">
+                    {answerWasCorrect ? (
+                      <div className="text-green-600 font-semibold flex items-center gap-2">
+                        <CheckCircle size={20} /> Correct!
+                      </div>
+                    ) : (
+                      <div className="text-red-600 font-semibold flex items-center gap-2">
+                        <AlertTriangle size={20} /> Incorrect. <span className="ml-2">Correct answer: <b>{currentQuiz.questions[currentQuestionIndex].options[currentQuiz.questions[currentQuestionIndex].correct]}</b></span>
+                      </div>
+                    )}
+                    <div className="mt-2 text-gray-700 text-sm">
+                      {currentQuiz.questions[currentQuestionIndex].explanation}
+                    </div>
+                    <div className="flex justify-end mt-4">
+                      <Button onClick={nextQuestion}>
+                        {currentQuestionIndex === currentQuiz.questions.length - 1 ? 'Finish Quiz' : 'Next Question'}
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </div>
-              <div className="flex gap-4 justify-center">
-                <Button onClick={() => { setShowQuizDialog(false); setShowQuizResult(false); }}>
-                  Back to Quizzes
-                </Button>
-                <Button variant="outline" onClick={() => { setShowQuizDialog(false); setShowQuizResult(false); setActiveTab('dashboard'); }}>
-                  Dashboard
-                </Button>
+            )}
+            {/* Quiz Result */}
+            {showQuizResult && (
+              <div className="text-center space-y-6">
+                <h2 className="text-2xl font-bold">Quiz Complete!</h2>
+                <div className="text-6xl font-bold text-green-500">
+                  {Math.round((quizScore / currentQuiz.questions.length) * 100)}%
+                </div>
+                <div>
+                  <p className="text-lg">You scored {quizScore} out of {currentQuiz.questions.length}</p>
+                  <p className="text-sm text-gray-600">Earned {Math.floor((quizScore / currentQuiz.questions.length) * currentQuiz.points)} points</p>
+                </div>
+                <div className="flex gap-4 justify-center">
+                  <Button onClick={() => { setShowQuizDialog(false); setShowQuizResult(false); }}>
+                    Back to Quizzes
+                  </Button>
+                  <Button variant="outline" onClick={() => { setShowQuizDialog(false); setShowQuizResult(false); setActiveTab('dashboard'); }}>
+                    Dashboard
+                  </Button>
+                </div>
               </div>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
+            )}
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 

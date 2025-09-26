@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { USSDModal } from "./USSDOfflineModeButton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Navigate } from "react-router-dom";
-import { Shield, Eye, EyeOff, Loader2 } from "lucide-react";
+import { Shield, Eye, EyeOff, Loader2, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,6 +13,7 @@ import { useLanguage, SUPPORTED_LANGUAGES } from "@/contexts/LanguageContext";
 import { useVoice } from "@/contexts/VoiceContext";
 import { MFASetup } from "./MFASetup";
 import { useToast } from "@/hooks/use-toast";
+import { getRole, setRole } from "@/lib/role";
 
 
 
@@ -46,6 +47,8 @@ const useAuth = () => {
       setIsAuthenticated(true);
       setUser(data.user);
       
+      // After successful login, redirect to dashboard
+      return <Navigate to="/dashboard" replace />;
       return true;
     } catch (error) {
       console.error('Login error:', error);
@@ -124,6 +127,7 @@ export const AuthPage = () => {
   const [showUSSDModal, setShowUSSDModal] = useState(false);
   const [activeTab, setActiveTab] = useState("login");
   const [showPassword, setShowPassword] = useState(false);
+  const [selectedRole, setSelectedRole] = useState(getRole() || "");
   const [loginData, setLoginData] = useState({ email: "", password: "" });
   const [registerData, setRegisterData] = useState({
     name: "",
@@ -166,8 +170,16 @@ export const AuthPage = () => {
     setIsLoading(true);
     
     try {
+      if (!selectedRole) {
+        throw new Error("Please select your user type");
+      }
+      
       if (!loginData.email || !loginData.password) {
         throw new Error("Please enter both email and password");
+      }
+      
+      if (!getRole()) {
+        throw new Error("Please select your user type before logging in");
       }
       
       const success = await login({
@@ -176,10 +188,19 @@ export const AuthPage = () => {
       });
       
       if (success) {
+        const selectedRole = getRole();
+        if (!selectedRole) {
+          toast({
+            title: "Role Required",
+            description: "Please select a user type before logging in",
+            variant: "destructive"
+          });
+          return;
+        }
         setRedirectToDashboard(true);
         toast({
           title: "Login Successful",
-          description: "Welcome back!",
+          description: `Welcome back! Logged in as ${selectedRole}`,
           variant: "default"
         });
         if (isVoiceEnabled) {
@@ -211,6 +232,17 @@ export const AuthPage = () => {
     e.preventDefault();
     setError('');
     
+    if (!selectedRole) {
+      const errorMsg = "Please select your user type";
+      setError(errorMsg);
+      toast({
+        title: "Error",
+        description: errorMsg,
+        variant: "destructive"
+      });
+      return;
+    }
+
     if (registerData.password !== registerData.confirmPassword) {
       const errorMsg = "Passwords do not match";
       setError(errorMsg);
@@ -329,9 +361,9 @@ export const AuthPage = () => {
             </div>
           </div>
 
-          {/* Language Selector */}
+          {/* Language Selection */}
           <Card className="shadow-xl bg-white/10 backdrop-blur-md border-white/20">
-            <CardContent className="py-3">
+            <CardContent className="space-y-4">
               <div className="space-y-1">
                 <Label htmlFor="language" className="text-white text-sm">Select Language</Label>
                 <Select
@@ -373,7 +405,24 @@ export const AuthPage = () => {
                   <form onSubmit={handleLogin}>
                     <CardContent className="space-y-4">
                       <div className="space-y-2">
-                        <Label htmlFor="email" className="text-white">Email</Label>
+                        <Label htmlFor="role" className="text-white">User Type</Label>
+                        <Select
+                          value={selectedRole}
+                          onValueChange={(value) => {
+                            setSelectedRole(value);
+                            setRole(value);
+                          }}
+                        >
+                          <SelectTrigger className="bg-white/10 border-white/20 text-white">
+                            <SelectValue placeholder="Select User Type" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="primary">Primary User</SelectItem>
+                            <SelectItem value="reviewer">Reviewer</SelectItem>
+                          </SelectContent>
+                        </Select>
+
+                        <Label htmlFor="email" className="text-white mt-4">Email</Label>
                         <Input
                           id="email"
                           type="email"
@@ -439,6 +488,25 @@ export const AuthPage = () => {
                   </CardHeader>
                   <form onSubmit={handleRegister}>
                     <CardContent className="space-y-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="role" className="text-white">User Type</Label>
+                        <Select
+                          value={selectedRole}
+                          onValueChange={(value) => {
+                            setSelectedRole(value);
+                            setRole(value);
+                          }}
+                        >
+                          <SelectTrigger className="bg-white/10 border-white/20 text-white">
+                            <SelectValue placeholder="Select User Type" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="primary">Primary User</SelectItem>
+                            <SelectItem value="reviewer">Reviewer</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
                       <div className="space-y-2">
                         <Label htmlFor="name" className="text-white">Full Name</Label>
                         <Input
