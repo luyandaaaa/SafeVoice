@@ -99,6 +99,11 @@ export const useAuth = () => {
       setIsAuthenticated(true);
       setUser(data.user);
       
+      // Set the user's role
+      if (data.user && data.user.role) {
+        localStorage.setItem('userRole', data.user.role);
+      }
+      
       return true;
     } catch (error) {
       console.error('Login error:', error);

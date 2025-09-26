@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { USSDModal } from "./USSDOfflineModeButton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { Navigate } from "react-router-dom";
+import { Navigate, useNavigate } from "react-router-dom";
 import { Shield, Eye, EyeOff, Loader2, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -47,8 +47,17 @@ const useAuth = () => {
       setIsAuthenticated(true);
       setUser(data.user);
       
-      // After successful login, redirect to dashboard
-      return <Navigate to="/dashboard" replace />;
+      // Set the user's role
+      if (data.user && data.user.role) {
+        setRole(data.user.role);
+      }
+      
+      // Redirect based on role
+      if (data.user.role === 'reviewer') {
+        return <Navigate to="/reviewer/dashboard" replace />;
+      } else {
+        return <Navigate to="/dashboard" replace />;
+      }
       return true;
     } catch (error) {
       console.error('Login error:', error);
@@ -124,6 +133,7 @@ const useAuth = () => {
 };
 
 export const AuthPage = () => {
+  const navigate = useNavigate();
   const [showUSSDModal, setShowUSSDModal] = useState(false);
   const [activeTab, setActiveTab] = useState("login");
   const [showPassword, setShowPassword] = useState(false);
@@ -161,7 +171,8 @@ export const AuthPage = () => {
 
   // Redirect if already authenticated
   if (isAuthenticated) {
-    return <Navigate to="/dashboard" replace />;
+    const userRole = localStorage.getItem('userRole');
+    return <Navigate to={userRole === 'reviewer' ? '/reviewer/dashboard' : '/dashboard'} replace />;
   }
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -182,22 +193,30 @@ export const AuthPage = () => {
         throw new Error("Please select your user type before logging in");
       }
       
+      const userRole = getRole();
+      if (!userRole) {
+        toast({
+          title: "Role Required",
+          description: "Please select a user type before logging in",
+          variant: "destructive"
+        });
+        return;
+      }
+
       const success = await login({
         email: loginData.email.trim(),
         password: loginData.password
       });
       
       if (success) {
-        const selectedRole = getRole();
-        if (!selectedRole) {
-          toast({
-            title: "Role Required",
-            description: "Please select a user type before logging in",
-            variant: "destructive"
-          });
-          return;
+        localStorage.setItem('userRole', userRole);
+        
+        if (userRole === "reviewer") {
+          navigate("/reviewer/dashboard", { replace: true });
+        } else {
+          navigate("/dashboard", { replace: true });
         }
-        setRedirectToDashboard(true);
+
         toast({
           title: "Login Successful",
           description: `Welcome back! Logged in as ${selectedRole}`,

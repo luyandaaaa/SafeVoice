@@ -133,9 +133,9 @@ app.get('/api/uploads/files/:filename', async (req, res) => {
 // Auth middleware for protected routes
 const authMiddleware = require('./middleware/auth');
 
-// Basic root route
+// Basic root route - redirect to auth page
 app.get('/', (req, res) => {
-  res.json({ message: 'SafeVoice API is running 🚀' });
+  res.redirect('/auth');
 });
 
 // Health check endpoint
@@ -153,9 +153,13 @@ app.use('/api/evidence', authMiddleware, evidenceRoutes);
 app.use('/api/incidents', incidentsRoutes);
 app.use('/api/uploads', uploadsRoutes);
 
-// 404 handler
+// 404 handler - redirect to auth page
 app.use((req, res) => {
-  res.status(404).json({ error: 'Route not found' });
+  if (!req.path.startsWith('/api/')) {
+    res.redirect('/auth');
+  } else {
+    res.status(404).json({ error: 'API route not found' });
+  }
 });
 
 // Centralized error handler

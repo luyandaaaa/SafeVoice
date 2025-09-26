@@ -22,6 +22,12 @@ import { SafetyMap } from "@/components/map/SafetyMap";
 import Resources from "@/components/resources/Resources";
 import { Settings } from "@/components/settings/Settings";
 import { ErrorBoundary } from '@/components/ErrorBoundary';
+import { AlertModal as ReviewerAlertModal } from '@/components/ReviewerAlertModal';
+import { AnalyticsSection as ReviewerAnalyticsSection } from '@/components/ReviewerAnalyticsSection';
+import { ChatSection as ReviewerChatSection } from '@/components/ReviewerChatSection';
+import { ReviewerProvider } from '@/contexts/ReviewerContext';
+import { ReviewerDashboard } from '@/components/reviewer/ReviewerDashboard';
+import { ProtectedReviewerRoute } from '@/components/auth/ProtectedReviewerRoute';
 
 const queryClient = new QueryClient();
 
@@ -65,8 +71,8 @@ const App = () => {
               <BrowserRouter>
                 <Routes>
                   {/* Public routes */}
-                  <Route path="/" element={<Index />} />
-                  <Route path="/role-select" element={<Index />} />
+                  <Route path="/" element={<Navigate to="/auth" replace />} />
+                  <Route path="/role-select" element={<Navigate to="/auth" replace />} />
                   <Route path="/auth" element={<AuthPage />} />
                   
                   {/* Protected Routes */}
@@ -140,6 +146,15 @@ const App = () => {
                         <Settings />
                       </RouteWrapper>
                     </ProtectedRoute>
+                  } />
+
+                  {/* Reviewer Routes */}
+                  <Route path="/reviewer/*" element={
+                    <ProtectedReviewerRoute>
+                      <ReviewerProvider>
+                        <ReviewerDashboard />
+                      </ReviewerProvider>
+                    </ProtectedReviewerRoute>
                   } />
                   
                   {/* 404 Route */}
