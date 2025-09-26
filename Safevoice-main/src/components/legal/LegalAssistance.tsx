@@ -571,19 +571,88 @@ return (
                     <CardDescription>{resource.description}</CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <div className="flex flex-wrap gap-2 items-center mb-2">
-                      <Badge variant={getUrgencyColor(resource.urgency)}>{resource.urgency}</Badge>
-                      <Badge>{resource.category.replace('_', ' ')}</Badge>
-                    </div>
-                    {resource.downloadUrl && (
-                      <Button size="sm" onClick={() => downloadResource(resource)}>
-                        <Download className="h-4 w-4 mr-1" /> Download
-                      </Button>
-                    )}
-                    {resource.externalUrl && (
-                      <Button size="sm" variant="outline" onClick={() => openExternalLink(resource.externalUrl)}>
-                        <ExternalLink className="h-4 w-4 mr-1" /> Open Link
-                      </Button>
+                    {/* Removed category and urgency badges as requested */}
+                    {/* Custom Download and View for 'Know Your Rights: A Guide for Survivors' */}
+                    {resource.title === 'Know Your Rights: A Guide for Survivors' ? (
+                      <>
+                        <Button size="sm" onClick={() => {
+                          const link = document.createElement('a');
+                          link.href = '/src/assets/Survivors-Guide-2019-English.pdf';
+                          link.download = 'Survivors-Guide-2019-English.pdf';
+                          document.body.appendChild(link);
+                          link.click();
+                          document.body.removeChild(link);
+                        }}>
+                          <Download className="h-4 w-4 mr-1" /> Download
+                        </Button>
+                        <Button size="sm" variant="secondary" className="ml-2" onClick={() => window.open('/src/assets/Survivors-Guide-2019-English.pdf', '_blank')}>
+                          View
+                        </Button>
+                      </>
+                    ) : resource.title === 'Protection Order Application Form' ? (
+                      <>
+                        <Button size="sm" onClick={() => {
+                          const link = document.createElement('a');
+                          link.href = '/src/assets/Protection.pdf';
+                          link.download = 'Protection.pdf';
+                          document.body.appendChild(link);
+                          link.click();
+                          document.body.removeChild(link);
+                        }}>
+                          <Download className="h-4 w-4 mr-1" /> Download
+                        </Button>
+                        <Button size="sm" variant="secondary" className="ml-2" onClick={() => window.open('/src/assets/Protection.pdf', '_blank')}>
+                          View
+                        </Button>
+                      </>
+                    ) : resource.title === 'Criminal Case Process Guide' ? (
+                      <>
+                        <Button size="sm" onClick={() => {
+                          const link = document.createElement('a');
+                          link.href = '/src/assets/Crime.pdf';
+                          link.download = 'Crime.pdf';
+                          document.body.appendChild(link);
+                          link.click();
+                          document.body.removeChild(link);
+                        }}>
+                          <Download className="h-4 w-4 mr-1" /> Download
+                        </Button>
+                        <Button size="sm" variant="secondary" className="ml-2" onClick={() => window.open('/src/assets/Crime.pdf', '_blank')}>
+                          View
+                        </Button>
+                      </>
+                    ) : resource.title === 'Domestic Violence Act Overview' ? (
+                      <>
+                        <Button size="sm" onClick={() => {
+                          const link = document.createElement('a');
+                          link.href = '/src/assets/Domestic.pdf';
+                          link.download = 'Domestic.pdf';
+                          document.body.appendChild(link);
+                          link.click();
+                          document.body.removeChild(link);
+                        }}>
+                          <Download className="h-4 w-4 mr-1" /> Download
+                        </Button>
+                        <Button size="sm" variant="secondary" className="ml-2" onClick={() => window.open('/src/assets/Domestic.pdf', '_blank')}>
+                          View
+                        </Button>
+                      </>
+                    ) : (
+                      <>
+                        {resource.downloadUrl && (
+                          <Button size="sm" onClick={() => downloadResource(resource)}>
+                            <Download className="h-4 w-4 mr-1" /> Download
+                          </Button>
+                        )}
+                        {resource.externalUrl && (
+                          <Button size="sm" variant="outline" onClick={() => openExternalLink(resource.externalUrl)}>
+                            <ExternalLink className="h-4 w-4 mr-1" /> Open Link
+                          </Button>
+                        )}
+                        <Button size="sm" variant="secondary" className="ml-2" onClick={() => resource.downloadUrl ? window.open(resource.downloadUrl, '_blank') : resource.externalUrl ? window.open(resource.externalUrl, '_blank') : null}>
+                          View
+                        </Button>
+                      </>
                     )}
                   </CardContent>
                 </Card>

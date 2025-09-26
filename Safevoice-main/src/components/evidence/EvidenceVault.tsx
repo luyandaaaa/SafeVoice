@@ -3,7 +3,6 @@ import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from "@/components/ui/dialog";
 import { Progress } from "@/components/ui/progress";
@@ -14,8 +13,12 @@ import {
   Image, Video, AudioLines, File, BookOpen, Phone, ExternalLink, 
   Play, Heart, Globe, Award, Trophy, Bell, Lock, Share2, Trash2,
   BarChart2, PieChart, LineChart, Calendar, Clock, MapPin, Wifi,
-  Battery, Cloud, FilePlus, FileCheck, FileSearch, FileInput, FileOutput
+  Battery, Cloud, FilePlus, FileCheck, FileSearch, FileInput, FileOutput,
+  AlertTriangle, CheckCircle
 } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 
 // Types
 interface EvidenceFile {
@@ -65,6 +68,7 @@ interface AIAnalysis {
 interface Case {
   id: string;
   title: string;
+  description: string;
   status: 'active' | 'closed' | 'pending';
   priority: 'low' | 'medium' | 'high' | 'urgent';
   createdDate: Date;
@@ -83,28 +87,19 @@ interface Achievement {
   dateUnlocked?: Date;
 }
 
-interface Resource {
-  id: string;
-  title: string;
-  type: 'book' | 'video' | 'podcast' | 'article' | 'organization';
-  description: string;
-  url: string;
-  author?: string;
-  duration?: string;
-  recommended: boolean;
-}
-
 export const EvidenceVault = () => {
   // State management
   const [files, setFiles] = useState<EvidenceFile[]>([]);
   const [cases, setCases] = useState<Case[]>([]);
-  const [activeTab, setActiveTab] = useState<'overview' | 'upload' | 'cases' | 'analytics' | 'resources'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'upload' | 'cases' | 'analytics'>('overview');
   const [isLoading, setIsLoading] = useState(true);
   const [selectedCase, setSelectedCase] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState('all');
   const [filterPriority, setFilterPriority] = useState('all');
   const [newCaseTitle, setNewCaseTitle] = useState('');
+  const [newCaseDescription, setNewCaseDescription] = useState('');
+  const [newCasePriority, setNewCasePriority] = useState<'low' | 'medium' | 'high' | 'urgent'>('medium');
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<Record<string, number>>({});
   const [isAnalyzing, setIsAnalyzing] = useState<Record<string, boolean>>({});
@@ -112,14 +107,17 @@ export const EvidenceVault = () => {
   const [userLevel, setUserLevel] = useState(3);
   const [achievements, setAchievements] = useState<Achievement[]>([]);
   const [selectedFile, setSelectedFile] = useState<EvidenceFile | null>(null);
-  const [newFileDescription, setNewFileDescription] = useState('');
   const [newFileTags, setNewFileTags] = useState('');
   const [newFilePriority, setNewFilePriority] = useState<'low' | 'medium' | 'high' | 'urgent'>('medium');
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [uploadCaseId, setUploadCaseId] = useState<string>('');
   const [modalTab, setModalTab] = useState<'overview' | 'ai' | 'meta' | 'chain'>('overview');
   const [showEmergencyModal, setShowEmergencyModal] = useState(false);
+  const [uploadFormVisible, setUploadFormVisible] = useState(true);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Removed duplicate generateCaseNumber function to fix redeclaration error
 
   // Fetch evidence from vault
   const fetchEvidence = async () => {
@@ -205,9 +203,6 @@ export const EvidenceVault = () => {
     setCases(initialCases);
     setAchievements(initialAchievements);
   }, []);
-
-  // GBV Resources
-  const gbvResources: Resource[] = [];
 
   // Filter files based on search and filters
   const filteredFiles = files.filter(file => {
@@ -299,6 +294,11 @@ export const EvidenceVault = () => {
 
   const handleUpload = () => {
     if (selectedFiles.length === 0) return;
+    if (!hasActiveCases) {
+      alert('Please create an active case before uploading evidence.');
+      setActiveTab('cases');
+      return;
+    }
     
     setIsUploading(true);
     const newUploadProgress: Record<string, number> = {};
@@ -316,6 +316,7 @@ export const EvidenceVault = () => {
           clearInterval(interval);
           progress = 100;
           addFileToVault(file);
+          setUploadFormVisible(false); // Collapse form after upload
         }
         setUploadProgress(prev => ({ ...prev, [file.name]: progress }));
       }, 300);
@@ -329,12 +330,13 @@ export const EvidenceVault = () => {
       type: getFileTypeFromName(file.name),
       size: file.size,
       uploadDate: new Date(),
+      caseId: uploadCaseId,
       encrypted: true,
       shared: false,
       verified: false,
       priority: newFilePriority,
       tags: newFileTags.split(',').map(tag => tag.trim()).filter(tag => tag),
-      description: newFileDescription,
+      description: '',
       metadata: {
         timestamp: new Date(),
         deviceInfo: navigator.userAgent
@@ -499,13 +501,14 @@ export const EvidenceVault = () => {
 
   // Case management functions
   const createNewCase = () => {
-    if (!newCaseTitle.trim()) return;
+    if (!newCaseTitle.trim() || !newCaseDescription.trim()) return;
     
     const newCase: Case = {
-      id: `case-${Date.now()}`,
+      id: generateCaseNumber(),
       title: newCaseTitle,
+      description: newCaseDescription,
       status: 'active',
-      priority: 'medium',
+      priority: newCasePriority,
       createdDate: new Date(),
       lastUpdated: new Date(),
       fileCount: 0,
@@ -514,13 +517,15 @@ export const EvidenceVault = () => {
     
     setCases(prev => [...prev, newCase]);
     setNewCaseTitle('');
+    setNewCaseDescription('');
+    setNewCasePriority('medium');
     
     // Award XP for creating a case
     setUserXP(prev => prev + 15);
     
-    // Check if this unlocks the Case Manager achievement
-    const caseManagerAchievement = achievements.find(a => a.id === 'ach-3');
-    if (caseManagerAchievement && !caseManagerAchievement.unlocked) {
+    // Check if this unlocks any achievements
+    const firstCaseAchievement = achievements.find(a => a.id === 'ach-3');
+    if (firstCaseAchievement && !firstCaseAchievement.unlocked) {
       setAchievements(prev => prev.map(a => 
         a.id === 'ach-3' ? { ...a, unlocked: true, dateUnlocked: new Date() } : a
       ));
@@ -539,13 +544,6 @@ export const EvidenceVault = () => {
     setFiles(prev => prev.map(f => 
       f.id === file.id ? { ...f, shared: true } : f
     ));
-  };
-
-  const handleDelete = (fileId: string) => {
-    if (confirm("Are you sure you want to delete this evidence file? This action cannot be undone.")) {
-      setFiles(prev => prev.filter(f => f.id !== fileId));
-      setSelectedFile(null);
-    }
   };
 
   // Emergency actions
@@ -697,23 +695,65 @@ export const EvidenceVault = () => {
   };
 
   const [selectedCaseDialog, setSelectedCaseDialog] = useState<any | null>(null);
+  
+  // Function to generate a unique case number
+  const generateCaseNumber = () => {
+    const date = new Date();
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const random = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
+    return `GBV-${year}${month}-${random}`;
+  };
+
+  // Modified createNewCase function
+  const handleCreateCase = () => {
+    if (!newCaseTitle.trim() || !newCaseDescription.trim() || !newCasePriority) return;
+    
+    const newCase: Case = {
+      id: generateCaseNumber(),
+      title: newCaseTitle,
+      description: newCaseDescription,
+      status: 'active',
+      priority: newCasePriority,
+      createdDate: new Date(),
+      lastUpdated: new Date(),
+      fileCount: 0,
+      riskAssessment: 'low'
+    };
+    
+    setCases(prev => [...prev, newCase]);
+    setNewCaseTitle('');
+    setNewCaseDescription('');
+    setNewCasePriority('medium');
+    
+    // Award XP for creating a case
+    setUserXP(prev => prev + 15);
+    
+    // Check if this unlocks any achievements
+    const firstCaseAchievement = achievements.find(a => a.id === 'ach-3');
+    if (firstCaseAchievement && !firstCaseAchievement.unlocked) {
+      setAchievements(prev => prev.map(a => 
+        a.id === 'ach-3' ? { ...a, unlocked: true, dateUnlocked: new Date() } : a
+      ));
+    }
+  };
+
+  // Check if there are any active cases
+  const hasActiveCases = cases.some(c => c.status === 'active');
+
   return (
     <div className="max-w-7xl mx-auto px-4 py-8 space-y-8">
       {/* Header */}
-      <div className="space-y-2">
-        <h1 className="text-4xl font-bold tracking-tight flex items-center gap-3">
-          <Shield className="text-blue-500 w-8 h-8" />
-          GBV Evidence Vault
-          <Badge variant="outline" className="bg-blue-100 text-blue-800 border-blue-200">
-            <span className="flex items-center gap-1">
-              <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span>
-              AI Enhanced
-            </span>
-          </Badge>
-        </h1>
-        <p className="text-lg text-gray-600">
-          Secure evidence management with intelligent analysis for GBV cases
-        </p>
+      <div className="mt-6 mb-6">
+        <div className="rounded-lg border border-primary bg-primary/10 px-6 py-4 shadow-sm">
+          <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3">
+            <Shield className="text-blue-500 w-8 h-8" />
+            GBV Evidence Vault
+          </h1>
+          <p className="text-muted-foreground">
+            Secure evidence management with intelligent analysis for GBV cases
+          </p>
+        </div>
       </div>
 
       {/* Gamification Progress */}
@@ -817,11 +857,9 @@ export const EvidenceVault = () => {
         </Card>
       </div>
 
-
-
       {/* Main Tabs */}
       <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as any)}>
-        <TabsList className="grid w-full grid-cols-5">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="overview">
             <span className="flex items-center gap-2">
               <FileText className="w-4 h-4" />
@@ -844,12 +882,6 @@ export const EvidenceVault = () => {
             <span className="flex items-center gap-2">
               <BarChart2 className="w-4 h-4" />
               Analytics
-            </span>
-          </TabsTrigger>
-          <TabsTrigger value="resources">
-            <span className="flex items-center gap-2">
-              <BookOpen className="w-4 h-4" />
-              Resources
             </span>
           </TabsTrigger>
         </TabsList>
@@ -1056,272 +1088,259 @@ export const EvidenceVault = () => {
 
         {/* Upload Evidence Tab */}
         <TabsContent value="upload" className="space-y-6">
-          {/* Quick Upload Options */}
-          <div className="grid gap-4 md:grid-cols-4">
-            <Button 
-              variant="outline" 
-              className="h-20 flex flex-col gap-2"
-              onClick={() => {
-                if (fileInputRef.current) {
-                  fileInputRef.current.accept = "image/*";
-                  fileInputRef.current.click();
-                }
-              }}
-            >
-              <Image className="text-blue-500 w-6 h-6" />
-              <span className="text-sm">Upload Photos</span>
-            </Button>
-            <Button 
-              variant="outline" 
-              className="h-20 flex flex-col gap-2"
-              onClick={() => {
-                if (fileInputRef.current) {
-                  fileInputRef.current.accept = "video/*";
-                  fileInputRef.current.click();
-                }
-              }}
-            >
-              <Video className="text-purple-500 w-6 h-6" />
-              <span className="text-sm">Upload Videos</span>
-            </Button>
-            <Button 
-              variant="outline" 
-              className="h-20 flex flex-col gap-2"
-              onClick={() => {
-                if (fileInputRef.current) {
-                  fileInputRef.current.accept = "audio/*";
-                  fileInputRef.current.click();
-                }
-              }}
-            >
-              <AudioLines className="text-green-500 w-6 h-6" />
-              <span className="text-sm">Upload Audio</span>
-            </Button>
-            <Button 
-              variant="outline" 
-              className="h-20 flex flex-col gap-2"
-              onClick={() => {
-                if (fileInputRef.current) {
-                  fileInputRef.current.accept = ".pdf,.doc,.docx";
-                  fileInputRef.current.click();
-                }
-              }}
-            >
-              <FileText className="text-yellow-500 w-6 h-6" />
-              <span className="text-sm">Upload Documents</span>
-            </Button>
-          </div>
+          {!hasActiveCases ? (
+             <Card>
+              <CardContent className="pt-6">
+                <div className="text-center space-y-4">
+                  <Shield className="w-12 h-12 text-gray-400 mx-auto" />
+                  <div className="space-y-2">
+                    <h3 className="text-lg font-medium">No Active Cases</h3>
+                    <p className="text-sm text-gray-500">
+                      You need to create an active case before uploading evidence. 
+                      Please go to the Cases tab to create a new case first.
+                    </p>
+                    <Button
+                      variant="outline"
+                      onClick={() => setActiveTab('cases')}
+                    >
+                      Create New Case
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ) : uploadFormVisible ? (
+            <>
+              {/* Quick Upload Options */}
+              <div className="grid gap-4 md:grid-cols-4">
+                <Button 
+                  variant="outline" 
+                  className="h-20 flex flex-col gap-2"
+                  onClick={() => {
+                    if (fileInputRef.current) {
+                      fileInputRef.current.click();
+                    }
+                  }}
+                >
+                  <Image className="text-blue-500 w-6 h-6" />
+                  <span className="text-sm">Upload Photos</span>
+                </Button>
+                <Button 
+                  variant="outline" 
+                  className="h-20 flex flex-col gap-2"
+                  onClick={() => {
+                    if (fileInputRef.current) {
+                      fileInputRef.current.click();
+                    }
+                  }}
+                >
+                  <Video className="text-purple-500 w-6 h-6" />
+                  <span className="text-sm">Upload Videos</span>
+                </Button>
+                <Button 
+                  variant="outline" 
+                  className="h-20 flex flex-col gap-2"
+                  onClick={() => {
+                    if (fileInputRef.current) {
+                      fileInputRef.current.click();
+                    }
+                  }}
+                >
+                  <AudioLines className="text-green-500 w-6 h-6" />
+                  <span className="text-sm">Upload Audio</span>
+                </Button>
+                <Button 
+                  variant="outline" 
+                  className="h-20 flex flex-col gap-2"
+                  onClick={() => {
+                    if (fileInputRef.current) {
+                      fileInputRef.current.click();
+                    }
+                  }}
+                >
+                  <FileText className="text-yellow-500 w-6 h-6" />
+                  <span className="text-sm">Upload Documents</span>
+                </Button>
+              </div>
 
-          {/* Main Upload Area */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Shield className="text-blue-500 w-5 h-5" />
-                Secure Evidence Upload
-                <Badge variant="outline" className="bg-green-100 text-green-800 border-green-200">
-                  <Lock className="mr-1 h-3 w-3" />
-                  Auto-Encrypted
-                </Badge>
-              </CardTitle>
-              <CardDescription>
-                All files are automatically encrypted and analyzed by AI for evidence integrity and relevance
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="border-2 border-dashed border-gray-300 rounded-lg p-12 text-center">
-                <Upload className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-                <h3 className="text-xl font-semibold mb-2">Drag & Drop Evidence Files</h3>
-                <p className="text-gray-500 mb-6">
-                  Supported: Images, Videos, Audio, Screenshots, Documents (Max 100MB per file)
-                </p>
-                
-                <div className="space-y-4">
-                  <div className="flex items-center justify-center gap-4">
-                    <Select>
-                      <SelectTrigger className="w-64">
-                        <SelectValue placeholder="No case assignment" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">No case assignment</SelectItem>
-                        {cases.map(c => (
-                          <SelectItem key={c.id} value={c.id}>{c.title}</SelectItem>
+              {/* Main Upload Area */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Shield className="text-blue-500 w-5 h-5" />
+                    Secure Evidence Upload
+                    <Badge variant="outline" className="bg-green-100 text-green-800 border-green-200">
+                      End-to-End Encrypted
+                    </Badge>
+                  </CardTitle>
+                  <CardDescription>
+                    All files are automatically encrypted and analyzed by AI for evidence integrity and relevance
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-12 text-center">
+                    <Upload className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+                    <h3 className="text-lg font-medium">Drag and drop files here</h3>
+                    <p className="text-sm text-gray-500">or click to select files from your device</p>
+                    
+                    <input 
+                      type="file" 
+                      ref={fileInputRef}
+                      multiple 
+                      className="hidden"
+                      onChange={handleFileSelect}
+                      accept="image/*,video/*,audio/*,.pdf,.doc,.docx"
+                    />
+                    
+                    <Button 
+                      variant="outline" 
+                      className="mt-4"
+                      onClick={() => {
+                        if (fileInputRef.current) {
+                          fileInputRef.current.click();
+                        }
+                      }}
+                    >
+                      Select Files
+                    </Button>
+                    
+                    <p className="text-xs text-gray-400 mt-2">
+                      Max file size: 100MB. Supported formats: images, videos, audio, PDF, DOC.
+                    </p>
+                  </div>
+
+                  {/* Selected files list */}
+                  {selectedFiles.length > 0 && (
+                    <div className="mt-6">
+                      <h4 className="font-medium mb-2">Selected Files:</h4>
+                      <ul className="space-y-2">
+                        {selectedFiles.map((file, index) => (
+                          <li key={index} className="flex items-center justify-between p-2 bg-gray-50 rounded-md">
+                            <div className="flex items-center gap-2">
+                              {getFileIcon(getFileTypeFromName(file.name))}
+                              <span className="text-sm">{file.name}</span>
+                              <span className="text-xs text-gray-500">({formatFileSize(file.size)})</span>
+                            </div>
+                            <Button variant="ghost" size="sm" onClick={() => removeSelectedFile(index)}>
+                              <X className="w-4 h-4" />
+                            </Button>
+                          </li>
                         ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  
-                  <input
-                    type="file"
-                    ref={fileInputRef}
-                    onChange={handleFileSelect}
-                    multiple
-                    className="hidden"
-                  />
-                  <Button 
-                    className="px-6 py-3 text-lg"
-                    onClick={() => fileInputRef.current?.click()}
-                  >
-                    <Plus className="mr-2 h-5 w-5" />
-                    Select Files to Upload
-                  </Button>
-                </div>
-              </div>
+                      </ul>
+                    </div>
+                  )}
 
-              {/* Selected Files */}
-              {selectedFiles.length > 0 && (
-                <div className="mt-6 space-y-4">
-                  <h4 className="font-medium">Selected Files</h4>
-                  <div className="border rounded-lg divide-y">
-                    {selectedFiles.map((file, index) => (
-                      <div key={index} className="p-3 flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          {getFileIcon(getFileTypeFromName(file.name))}
-                          <div>
-                            <p className="text-sm font-medium">{file.name}</p>
-                            <p className="text-xs text-gray-500">{formatFileSize(file.size)}</p>
+                  {/* File details form */}
+                  {selectedFiles.length > 0 && (
+                    <div className="mt-6 grid gap-4 md:grid-cols-2">
+                      <div className="space-y-2">
+                        <Label>Assign to Case</Label>
+                        <Select value={uploadCaseId} onValueChange={setUploadCaseId}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select a case" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {cases.filter(c => c.status === 'active').map(c => (
+                              <SelectItem key={c.id} value={c.id}>{c.title}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Tags (comma-separated)</Label>
+                        <Input 
+                          placeholder="e.g. threat, harassment, online"
+                          value={newFileTags}
+                          onChange={(e) => setNewFileTags(e.target.value)}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Priority</Label>
+                        <Select value={newFilePriority} onValueChange={(v) => setNewFilePriority(v as any)}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select priority" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="urgent">Urgent</SelectItem>
+                            <SelectItem value="high">High</SelectItem>
+                            <SelectItem value="medium">Medium</SelectItem>
+                            <SelectItem value="low">Low</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Upload progress */}
+                  {isUploading && (
+                    <div className="mt-6">
+                      <h4 className="font-medium mb-2">Uploading...</h4>
+                      <div className="space-y-2">
+                        {Object.entries(uploadProgress).map(([name, progress]) => (
+                          <div key={name}>
+                            <div className="flex justify-between text-sm">
+                              <span>{name}</span>
+                              <span>{Math.round(progress)}%</span>
+                            </div>
+                            <Progress value={progress} className="h-2" />
                           </div>
-                        </div>
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          onClick={() => removeSelectedFile(index)}
-                        >
-                          <X className="h-4 w-4" />
-                        </Button>
+                        ))}
                       </div>
-                    ))}
-                  </div>
-                </div>
-              )}
+                    </div>
+                  )}
 
-              {/* File Details */}
-              {selectedFiles.length > 0 && (
-                <div className="mt-6 space-y-4">
-                  <h4 className="font-medium">File Details</h4>
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium">Description</label>
-                      <Textarea
-                        placeholder="Describe the evidence (what, when, where, who involved)"
-                        value={newFileDescription}
-                        onChange={(e) => setNewFileDescription(e.target.value)}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium">Tags (comma separated)</label>
-                      <Input
-                        placeholder="e.g. threats, messages, screenshot"
-                        value={newFileTags}
-                        onChange={(e) => setNewFileTags(e.target.value)}
-                      />
+                  {/* Security reminder */}
+                  <div className="mt-6 p-4 bg-blue-50 rounded-lg">
+                    <div className="flex items-start gap-3">
+                      <Shield className="w-6 h-6 text-blue-500 flex-shrink-0" />
+                      <div>
+                        <h4 className="font-medium">Your Security is Our Priority</h4>
+                        <ul className="list-disc list-inside text-sm text-gray-600 mt-1 space-y-1">
+                          <li>All evidence is encrypted both in transit and at rest.</li>
+                          <li>AI analysis is performed in a secure, isolated environment.</li>
+                          <li>Your data is never shared without your explicit consent.</li>
+                          <li>We adhere to strict data privacy and protection regulations.</li>
+                        </ul>
+                      </div>
                     </div>
                   </div>
-                  
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium">Priority</label>
-                      <Select 
-                        value={newFilePriority} 
-                        onValueChange={(value) => setNewFilePriority(value as any)}
+
+                  {/* Upload button */}
+                  {selectedFiles.length > 0 && !isUploading && (
+                    <div className="mt-6 flex justify-end">
+                      <Button 
+                        onClick={handleUpload}
+                        className="flex items-center gap-2"
+                        disabled={!uploadCaseId}
                       >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select priority" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="low">Low</SelectItem>
-                          <SelectItem value="medium">Medium</SelectItem>
-                          <SelectItem value="high">High</SelectItem>
-                          <SelectItem value="urgent">Urgent</SelectItem>
-                        </SelectContent>
-                      </Select>
+                        <Upload className="w-4 h-4" />
+                        Upload Securely
+                      </Button>
                     </div>
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium">Assign to Case</label>
-                      <Select>
-                        <SelectTrigger>
-                          <SelectValue placeholder="No case assignment" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">No case assignment</SelectItem>
-                          {cases.map(c => (
-                            <SelectItem key={c.id} value={c.id}>{c.title}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </>
+          ) : (
+            <Card>
+              <CardContent className="pt-6">
+                <div className="text-center space-y-4">
+                  <CheckCircle className="w-12 h-12 text-green-500 mx-auto" />
+                  <div className="space-y-2">
+                    <h3 className="text-lg font-medium">Evidence Uploaded Successfully</h3>
+                    <p className="text-sm text-gray-500">
+                      Your evidence has been securely stored and encrypted.
+                    </p>
+                    <Button
+                      onClick={() => setUploadFormVisible(true)}
+                    >
+                      Upload More Evidence
+                    </Button>
                   </div>
                 </div>
-              )}
-
-              {/* Upload Progress */}
-              {isUploading && (
-                <div className="mt-6 space-y-4">
-                  <h4 className="font-medium">Upload Progress</h4>
-                  <div className="space-y-3">
-                    {selectedFiles.map(file => (
-                      <div key={file.name} className="space-y-1">
-                        <div className="flex justify-between text-sm">
-                          <span className="flex items-center gap-2">
-                            {uploadProgress[file.name] === 100 ? (
-                              <Check className="h-4 w-4 text-green-500" />
-                            ) : (
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                            )}
-                            Uploading {file.name}
-                          </span>
-                          <span className="font-medium">{uploadProgress[file.name]?.toFixed(0) || 0}%</span>
-                        </div>
-                        <Progress value={uploadProgress[file.name] || 0} className="h-2" />
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Upload Tips */}
-              <div className="mt-6 p-4 bg-blue-50 rounded-lg">
-                <h4 className="font-medium text-blue-900 mb-2 flex items-center gap-2">
-                  <Shield className="w-5 h-5" />
-                  AI-Enhanced Upload Tips
-                </h4>
-                <ul className="text-sm text-blue-800 space-y-1">
-                  <li className="flex items-start gap-2">
-                    <span className="w-2 h-2 rounded-full bg-blue-500 mt-1.5"></span>
-                    Clear, high-resolution images provide better analysis results
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="w-2 h-2 rounded-full bg-blue-500 mt-1.5"></span>
-                    Include original timestamps and location data when possible
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="w-2 h-2 rounded-full bg-blue-500 mt-1.5"></span>
-                    Audio recordings with minimal background noise are analyzed more accurately
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="w-2 h-2 rounded-full bg-blue-500 mt-1.5"></span>
-                    Screenshots should include full context (headers, timestamps, etc.)
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="w-2 h-2 rounded-full bg-blue-500 mt-1.5"></span>
-                    Documents in text format (PDF, DOC) allow for better content extraction
-                  </li>
-                </ul>
-              </div>
-
-              {/* Upload Button */}
-              {selectedFiles.length > 0 && !isUploading && (
-                <div className="mt-6 flex justify-end">
-                  <Button 
-                    onClick={handleUpload}
-                    disabled={selectedFiles.length === 0}
-                  >
-                    <Upload className="mr-2 h-4 w-4" />
-                    Upload Evidence
-                  </Button>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          )}
         </TabsContent>
 
         {/* Case Management Tab */}
@@ -1335,16 +1354,47 @@ export const EvidenceVault = () => {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="flex gap-2">
-                <Input
-                  placeholder="Case title (e.g. Domestic Violence Case #2024-002)"
-                  value={newCaseTitle}
-                  onChange={(e) => setNewCaseTitle(e.target.value)}
-                />
-                <Button 
-                  onClick={createNewCase} 
-                  disabled={!newCaseTitle.trim()}
-                >
+              <div className="space-y-4">
+                 <Alert className="bg-yellow-50 border-yellow-200">
+                  <AlertTriangle className="h-4 w-4 text-yellow-600" />
+                  <AlertTitle>Important Notice</AlertTitle>
+                  <AlertDescription>
+                    Once submitted, reports and evidence cannot be deleted to protect your rights and ensure legal validity. 
+                    You may request case withdrawal through our support team.
+                  </AlertDescription>
+                </Alert>
+                <div className="space-y-2">
+                  <Label>Case Title</Label>
+                  <Input
+                    placeholder="Case title (e.g. Domestic Violence Case #2024-002)"
+                    value={newCaseTitle}
+                    onChange={(e) => setNewCaseTitle(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Case Description</Label>
+                  <Textarea
+                    placeholder="Provide a detailed description of what happened..."
+                    value={newCaseDescription}
+                    onChange={(e) => setNewCaseDescription(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Priority</Label>
+                  <Select value={newCasePriority} onValueChange={(v) => setNewCasePriority(v as any)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select priority" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="urgent">Urgent</SelectItem>
+                      <SelectItem value="high">High</SelectItem>
+                      <SelectItem value="medium">Medium</SelectItem>
+                      <SelectItem value="low">Low</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <Button onClick={createNewCase} className="w-full" disabled={!newCaseTitle || !newCaseDescription}>
+                  <Plus className="w-4 h-4 mr-2" />
                   Create Case
                 </Button>
               </div>
@@ -1620,426 +1670,320 @@ export const EvidenceVault = () => {
           </Card>
         </TabsContent>
 
-        {/* Resources Tab */}
-        <TabsContent value="resources" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <BookOpen className="text-blue-500 w-5 h-5" />
-                GBV Resources & Support
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid gap-6 md:grid-cols-3">
-                {/* Books */}
-                <div>
-                  <h4 className="font-medium mb-3 flex items-center gap-2">
-                    <BookOpen className="text-blue-500 w-5 h-5" />
-                    Recommended Books
-                  </h4>
-                  <ul className="space-y-2 text-sm">
-                    {gbvResources
-                      .filter(r => r.type === 'book' && r.recommended)
-                      .map(resource => (
-                        <li key={resource.id}>
-                          <a 
-                            href={resource.url} 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            className="text-blue-600 hover:underline flex items-start gap-2"
-                          >
-                            <ExternalLink className="w-4 h-4 mt-0.5 flex-shrink-0" />
-                            <span>
-                              {resource.title}
-                              {resource.author && <span className="text-gray-500 block text-xs">by {resource.author}</span>}
-                            </span>
-                          </a>
-                        </li>
-                      ))}
-                  </ul>
-                </div>
-                
-                {/* Videos */}
-                <div>
-                  <h4 className="font-medium mb-3 flex items-center gap-2">
-                    <Video className="text-blue-500 w-5 h-5" />
-                    Educational Videos
-                  </h4>
-                  <ul className="space-y-2 text-sm">
-                    {gbvResources
-                      .filter(r => r.type === 'video')
-                      .map(resource => (
-                        <li key={resource.id}>
-                          <a 
-                            href={resource.url} 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            className="text-blue-600 hover:underline flex items-start gap-2"
-                          >
-                            <ExternalLink className="w-4 h-4 mt-0.5 flex-shrink-0" />
-                            <span>
-                              {resource.title}
-                              {resource.duration && <span className="text-gray-500 block text-xs">{resource.duration}</span>}
-                            </span>
-                          </a>
-                        </li>
-                      ))}
-                  </ul>
-                </div>
-                
-                {/* Organizations */}
-                <div>
-                  <h4 className="font-medium mb-3 flex items-center gap-2">
-                    <Globe className="text-blue-500 w-5 h-5" />
-                    Support Organizations
-                  </h4>
-                  <ul className="space-y-2 text-sm">
-                    {gbvResources
-                      .filter(r => r.type === 'organization')
-                      .map(resource => (
-                        <li key={resource.id}>
-                          <a 
-                            href={resource.url} 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            className="text-blue-600 hover:underline flex items-start gap-2"
-                          >
-                            <ExternalLink className="w-4 h-4 mt-0.5 flex-shrink-0" />
-                            <span>
-                              {resource.title}
-                              <span className="text-gray-500 block text-xs">{resource.description}</span>
-                            </span>
-                          </a>
-                        </li>
-                      ))}
-                  </ul>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
-
-      {/* File Details Modal */}
-      <Dialog open={!!selectedFile} onOpenChange={(open) => !open && setSelectedFile(null)}>
-        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
-          {selectedFile && (
-            <div>
-              <DialogHeader>
-                <DialogTitle className="flex items-center gap-2">
-                  {getFileIcon(selectedFile.type, selectedFile.priority)}
-                  {selectedFile.name}
+        {/* File Details Modal */}
+        <Dialog open={!!selectedFile} onOpenChange={(open) => !open && setSelectedFile(null)}>
+          <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+            {selectedFile && (
+              <div>
+                <DialogHeader>
+                  <DialogTitle className="flex items-center gap-2">
+                    {getFileIcon(selectedFile.type, selectedFile.priority)}
+                    {selectedFile.name}
+                    <Badge variant="outline" className={getPriorityBadge(selectedFile.priority)}>
+                      {selectedFile.priority}
+                    </Badge>
+                  </DialogTitle>
+                </DialogHeader>
+                <div className="flex flex-wrap gap-2 mb-4">
                   <Badge variant="outline" className={getPriorityBadge(selectedFile.priority)}>
                     {selectedFile.priority}
-                  </Badge>
-                </DialogTitle>
-              </DialogHeader>
-              <div className="flex flex-wrap gap-2 mb-4">
-                <Badge variant="outline" className={getPriorityBadge(selectedFile.priority)}>
-                  {selectedFile.priority}
-                </Badge>
-                {selectedFile.tags.map(tag => (
-                  <Badge key={tag} variant="outline" className="bg-gray-100 text-gray-800">
-                    {tag}
-                  </Badge>
-                ))}
-              </div>
-              <div className="grid grid-cols-4 gap-2 mb-4">
-                <Button 
-                  variant={modalTab === 'overview' ? 'default' : 'ghost'} 
-                  className="py-2 px-3 text-sm" 
-                  onClick={() => setModalTab('overview')}
-                >
-                  Overview
-                </Button>
-                <Button 
-                  variant={modalTab === 'ai' ? 'default' : 'ghost'} 
-                  className="py-2 px-3 text-sm" 
-                  onClick={() => setModalTab('ai')}
-                >
-                  AI Analysis
-                </Button>
-                <Button 
-                  variant={modalTab === 'meta' ? 'default' : 'ghost'} 
-                  className="py-2 px-3 text-sm" 
-                  onClick={() => setModalTab('meta')}
-                >
-                  Metadata
-                </Button>
-                <Button 
-                  variant={modalTab === 'chain' ? 'default' : 'ghost'} 
-                  className="py-2 px-3 text-sm" 
-                  onClick={() => setModalTab('chain')}
-                >
-                  Chain of Custody
-                </Button>
-              </div>
-              
-              {/* Tab content */}
-              {modalTab === 'overview' && (
-                <div className="grid grid-cols-2 gap-4 text-sm mb-4">
-                  <div>
-                    <p className="font-medium">File Type</p>
-                    <p className="text-gray-600 capitalize">{selectedFile.type}</p>
-                  </div>
-                  <div>
-                    <p className="font-medium">File Size</p>
-                    <p className="text-gray-600">{formatFileSize(selectedFile.size)}</p>
-                  </div>
-                  <div>
-                    <p className="font-medium">Upload Date</p>
-                    <p className="text-gray-600">{selectedFile.uploadDate.toLocaleDateString()}</p>
-                  </div>
-                  <div>
-                    <p className="font-medium">Status</p>
-                    <div className="flex gap-1">
-                      <Badge variant="outline" className="bg-green-100 text-green-800 border-green-200">
-                        Encrypted
-                      </Badge>
-                      <Badge variant="outline" className="bg-blue-100 text-blue-800 border-blue-200">
-                        Verified
-                      </Badge>
-                    </div>
-                  </div>
-                  
-                  <div className="col-span-2 mb-4">
-                    <p className="font-medium text-sm mb-2">Description</p>
-                    <p className="text-sm text-gray-600 bg-gray-50 p-3 rounded">
-                      {selectedFile.description}
-                    </p>
-                  </div>
-                  
-                  <div className="col-span-2">
-                    <p className="font-medium text-sm mb-2">Case Assignment</p>
-                    <p className="text-sm text-gray-600">
-                      {selectedFile.caseId ? cases.find(c => c.id === selectedFile.caseId)?.title : 'No case assigned'}
-                    </p>
-                  </div>
-                </div>
-              )}
-              
-              {modalTab === 'ai' && (
-                <div className="space-y-4">
-                  {selectedFile.aiAnalysis ? (
-                    <>
-                      <div className="p-3 bg-red-100 border-l-4 border-red-500 rounded flex items-start gap-2">
-                        <Shield className="text-red-500 mt-1 w-5 h-5" />
-                        <div>
-                          <strong>Risk Assessment: {selectedFile.aiAnalysis.riskLevel.toUpperCase()}</strong><br />
-                          Analysis confidence: {(selectedFile.aiAnalysis.confidence * 100).toFixed(1)}%
-                        </div>
-                      </div>
-                      
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="bg-white border rounded-lg p-3">
-                          <h4 className="font-medium text-sm flex items-center gap-2 mb-2">
-                            <BarChart2 className="text-blue-500 w-5 h-5" />
-                            Key Elements Detected
-                          </h4>
-                          <ul className="space-y-1 text-sm">
-                            {selectedFile.aiAnalysis.keyElements.map((element, idx) => (
-                              <li key={idx} className="flex items-center gap-2">
-                                <Check className="h-4 w-4 text-green-500" />
-                                {element}
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                        
-                        <div className="bg-white border rounded-lg p-3">
-                          <h4 className="font-medium text-sm flex items-center gap-2 mb-2">
-                            <Shield className="text-blue-500 w-5 h-5" />
-                            AI Recommendations
-                          </h4>
-                          <ul className="space-y-1 text-sm">
-                            {selectedFile.aiAnalysis.recommendations.map((rec, idx) => (
-                              <li key={idx} className="flex items-center gap-2">
-                                <AlertCircle className="h-4 w-4 text-blue-500" />
-                                {rec}
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      </div>
-                      
-                      {selectedFile.aiAnalysis.extractedText && (
-                        <div className="bg-white border rounded-lg p-3">
-                          <h4 className="font-medium text-sm flex items-center gap-2 mb-2">
-                            <FileText className="text-blue-500 w-5 h-5" />
-                            Extracted Content
-                          </h4>
-                          <p className="text-sm bg-yellow-50 p-3 rounded border-l-4 border-yellow-400 font-mono">
-                            {selectedFile.aiAnalysis.extractedText}
-                          </p>
-                        </div>
-                      )}
-                      
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        {selectedFile.aiAnalysis.persons && selectedFile.aiAnalysis.persons.length > 0 && (
-                          <div className="bg-white border rounded-lg p-3">
-                            <h4 className="font-medium text-sm flex items-center gap-1 mb-2">
-                              <Users className="text-blue-500 w-5 h-5" />
-                              Persons
-                            </h4>
-                            <div className="flex flex-wrap gap-1">
-                              {selectedFile.aiAnalysis.persons.map((person, idx) => (
-                                <Badge key={idx} variant="outline" className="bg-gray-100 text-gray-800">
-                                  {person}
-                                </Badge>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-                        
-                        {selectedFile.aiAnalysis.locations && selectedFile.aiAnalysis.locations.length > 0 && (
-                          <div className="bg-white border rounded-lg p-3">
-                            <h4 className="font-medium text-sm flex items-center gap-1 mb-2">
-                              <MapPin className="text-blue-500 w-5 h-5" />
-                              Locations
-                            </h4>
-                            <div className="flex flex-wrap gap-1">
-                              {selectedFile.aiAnalysis.locations.map((location, idx) => (
-                                <Badge key={idx} variant="outline" className="bg-gray-100 text-gray-800">
-                                  {location}
-                                </Badge>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-                        
-                        {selectedFile.aiAnalysis.emotions && selectedFile.aiAnalysis.emotions.length > 0 && (
-                          <div className="bg-white border rounded-lg p-3">
-                            <h4 className="font-medium text-sm flex items-center gap-1 mb-2">
-                              <Heart className="text-blue-500 w-5 h-5" />
-                              Emotions
-                            </h4>
-                            <div className="flex flex-wrap gap-1">
-                              {selectedFile.aiAnalysis.emotions.map((emotion, idx) => (
-                                <Badge key={idx} variant="outline" className="bg-gray-100 text-gray-800">
-                                  {emotion}
-                                </Badge>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    </>
-                  ) : (
-                    <div className="text-gray-500">No AI analysis available for this file.</div>
-                  )}
-                </div>
-              )}
-              
-              {modalTab === 'meta' && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="bg-white border rounded-lg p-3">
-                    <h4 className="font-medium text-sm mb-3">Technical Information</h4>
-                    <div className="space-y-2 text-sm">
-                      {selectedFile.metadata.deviceInfo && (
-                        <div>
-                          <p className="font-medium text-xs text-gray-500">Device</p>
-                          <p className="text-gray-800">{selectedFile.metadata.deviceInfo}</p>
-                        </div>
-                      )}
-                      {selectedFile.metadata.timestamp && (
-                        <div>
-                          <p className="font-medium text-xs text-gray-500">Original Timestamp</p>
-                          <p className="text-gray-800">{selectedFile.metadata.timestamp.toLocaleString()}</p>
-                        </div>
-                      )}
-                      {selectedFile.metadata.coordinates && (
-                        <div>
-                          <p className="font-medium text-xs text-gray-500">GPS Coordinates</p>
-                          <p className="text-gray-800 font-mono">
-                            {selectedFile.metadata.coordinates.lat}, {selectedFile.metadata.coordinates.lng}
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                  
-                  <div className="bg-white border rounded-lg p-3">
-                    <h4 className="font-medium text-sm mb-3">Additional Metadata</h4>
-                    <div className="space-y-2 text-sm">
-                      {selectedFile.metadata.location && (
-                        <div>
-                          <p className="font-medium text-xs text-gray-500">Location</p>
-                          <p className="text-gray-800">{selectedFile.metadata.location}</p>
-                        </div>
-                      )}
-                      {selectedFile.metadata.networkInfo && (
-                        <div>
-                          <p className="font-medium text-xs text-gray-500">Network</p>
-                          <p className="text-gray-800">{selectedFile.metadata.networkInfo}</p>
-                        </div>
-                      )}
-                      {selectedFile.metadata.batteryLevel && (
-                        <div>
-                          <p className="font-medium text-xs text-gray-500">Battery Level</p>
-                          <p className="text-gray-800">{selectedFile.metadata.batteryLevel}</p>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              )}
-              
-              {modalTab === 'chain' && (
-                <div className="space-y-3">
-                  {selectedFile.chainOfCustody.length > 0 ? (
-                    selectedFile.chainOfCustody.map((entry, idx) => (
-                      <div key={idx} className="bg-white border rounded-lg border-l-4 border-l-blue-500 p-4">
-                        <div className="flex items-start justify-between">
-                          <div className="flex-1">
-                            <h4 className="font-medium text-sm">{entry.action}</h4>
-                            <p className="text-sm text-gray-500">by {entry.user}</p>
-                            {entry.details && (
-                              <p className="text-xs text-gray-500 mt-1">{entry.details}</p>
-                            )}
-                          </div>
-                          <div className="text-right">
-                            <p className="text-xs text-gray-500">{entry.timestamp.toLocaleDateString()}</p>
-                            <p className="text-xs text-gray-500">{entry.timestamp.toLocaleTimeString()}</p>
-                          </div>
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="text-gray-500">No chain of custody records available.</div>
-                  )}
-                </div>
-              )}
-              
-              <div className="mt-6 border-t pt-4 flex justify-between">
-                <div className="flex gap-2">
-                  <Button 
-                    variant="outline" 
-                    onClick={() => handleDownload(selectedFile)}
-                  >
-                    <Download className="mr-2 h-4 w-4" />
-                    Download
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    onClick={() => handleShare(selectedFile)}
-                  >
-                    <Share2 className="mr-2 h-4 w-4" />
-                    Share
-                  </Button>
-                </div>
-                <Button 
-                  variant="destructive" 
-                  onClick={() => handleDelete(selectedFile.id)}
-                >
-                  <Trash2 className="mr-2 h-4 w-4" />
-                  Delete
-                </Button>
-              </div>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
 
+
+                  </Badge>
+                  {selectedFile.tags.map(tag => (
+                    <Badge key={tag} variant="outline" className="bg-gray-100 text-gray-800">
+                      {tag}
+                    </Badge>
+                  ))}
+                </div>
+                <div className="grid grid-cols-4 gap-2 mb-4">
+                  <Button 
+                    variant={modalTab === 'overview' ? 'default' : 'ghost'} 
+                    className="py-2 px-3 text-sm" 
+                    onClick={() => setModalTab('overview')}
+                  >
+                    Overview
+                  </Button>
+                  <Button 
+                    variant={modalTab === 'ai' ? 'default' : 'ghost'} 
+                    className="py-2 px-3 text-sm" 
+                    onClick={() => setModalTab('ai')}
+                  >
+                    AI Analysis
+                  </Button>
+                  <Button 
+                    variant={modalTab === 'meta' ? 'default' : 'ghost'} 
+                    className="py-2 px-3 text-sm" 
+                    onClick={() => setModalTab('meta')}
+                  >
+                    Metadata
+                  </Button>
+                  <Button 
+                    variant={modalTab === 'chain' ? 'default' : 'ghost'} 
+                    className="py-2 px-3 text-sm" 
+                    onClick={() => setModalTab('chain')}
+                  >
+                    Chain of Custody
+                  </Button>
+                </div>
+                
+                {/* Tab content */}
+                {modalTab === 'overview' && (
+                  <div className="grid grid-cols-2 gap-4 text-sm mb-4">
+                    <div>
+                      <p className="text-gray-600 capitalize">{selectedFile.type}</p>
+                    </div>
+                    <div>
+                      <p className="font-medium">File Size</p>
+                      <p className="text-gray-600">{formatFileSize(selectedFile.size)}</p>
+                    </div>
+                    <div>
+                      <p className="font-medium">Upload Date</p>
+                      <p className="text-gray-600">{selectedFile.uploadDate.toLocaleDateString()}</p>
+                    </div>
+                    <div>
+                      <p className="font-medium">Status</p>
+                      <div className="flex gap-1">
+                        <Badge variant="outline" className="bg-green-100 text-green-800 border-green-200">
+                          Encrypted
+                        </Badge>
+                        <Badge variant="outline" className="bg-blue-100 text-blue-800 border-blue-200">
+                          Verified
+                        </Badge>
+                      </div>
+                    </div>
+                    
+                    <div className="col-span-2 mb-4">
+                      <p className="font-medium text-sm mb-2">Description</p>
+                      <p className="text-sm text-gray-600 bg-gray-50 p-3 rounded">
+                        {selectedFile.description}
+                      </p>
+                    </div>
+                    
+                    <div className="col-span-2">
+                      <p className="font-medium text-sm mb-2">Case Assignment</p>
+                      <p className="text-sm text-gray-600">
+                        {selectedFile.caseId ? cases.find(c => c.id === selectedFile.caseId)?.title : 'No case assigned'}
+                      </p>
+                    </div>
+                  </div>
+                )}
+                
+                {modalTab === 'ai' && (
+                  <div className="space-y-4">
+                    {selectedFile.aiAnalysis ? (
+                      <>
+                        <div className="p-3 bg-red-100 border-l-4 border-red-500 rounded flex items-start gap-2">
+                          <Shield className="text-red-500 mt-1 w-5 h-5" />
+                          <div>
+                            <strong>Risk Assessment: {selectedFile.aiAnalysis.riskLevel.toUpperCase()}</strong><br />
+                            Analysis confidence: {(selectedFile.aiAnalysis.confidence * 100).toFixed(1)}%
+                          </div>
+                        </div>
+                        
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="bg-white border rounded-lg p-3">
+                            <h4 className="font-medium text-sm flex items-center gap-2 mb-2">
+                              <BarChart2 className="text-blue-500 w-5 h-5" />
+                              Key Elements Detected
+                            </h4>
+                            <ul className="space-y-1 text-sm">
+                              {selectedFile.aiAnalysis.keyElements.map((element, idx) => (
+                                <li key={idx} className="flex items-center gap-2">
+                                  <Check className="h-4 w-4 text-green-500" />
+                                  {element}
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                          
+                          <div className="bg-white border rounded-lg p-3">
+                            <h4 className="font-medium text-sm flex items-center gap-2 mb-2">
+                              <Shield className="text-blue-500 w-5 h-5" />
+                              AI Recommendations
+                            </h4>
+                            <ul className="space-y-1 text-sm">
+                              {selectedFile.aiAnalysis.recommendations.map((rec, idx) => (
+                                <li key={idx} className="flex items-center gap-2">
+                                  <AlertCircle className="h-4 w-4 text-blue-500" />
+                                  {rec}
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        </div>
+                        
+                        {selectedFile.aiAnalysis.extractedText && (
+                          <div className="bg-white border rounded-lg p-3">
+                            <h4 className="font-medium text-sm flex items-center gap-2 mb-2">
+                              <FileText className="text-blue-500 w-5 h-5" />
+                              Extracted Content
+                            </h4>
+                            <p className="text-sm bg-yellow-50 p-3 rounded border-l-4 border-yellow-400 font-mono">
+                              {selectedFile.aiAnalysis.extractedText}
+                            </p>
+                          </div>
+                        )}
+                        
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                                   {selectedFile.aiAnalysis.persons && selectedFile.aiAnalysis.persons.length > 0 && (
+                            <div className="bg-white border rounded-lg p-3">
+                              <h4 className="font-medium text-sm flex items-center gap-1 mb-2">
+                                <Users className="text-blue-500 w-5 h-5" />
+                                Persons
+                              </h4>
+                              <div className="flex flex-wrap gap-1">
+                                {selectedFile.aiAnalysis.persons.map((person, idx) => (
+                                  <Badge key={idx} variant="outline" className="bg-gray-100 text-gray-800">
+                                    {person}
+                                  </Badge>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                          
+                          {selectedFile.aiAnalysis.locations && selectedFile.aiAnalysis.locations.length > 0 && (
+                            <div className="bg-white border rounded-lg p-3">
+                              <h4 className="font-medium text-sm flex items-center gap-1 mb-2">
+                                <MapPin className="text-blue-500 w-5 h-5" />
+                                Locations
+                              </h4>
+                              <div className="flex flex-wrap gap-1">
+                                {selectedFile.aiAnalysis.locations.map((location, idx) => (
+                                  <Badge key={idx} variant="outline" className="bg-gray-100 text-gray-800">
+                                    {location}
+                                  </Badge>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                          
+                          {selectedFile.aiAnalysis.emotions && selectedFile.aiAnalysis.emotions.length > 0 && (
+                            <div className="bg-white border rounded-lg p-3">
+                              <h4 className="font-medium text-sm flex items-center gap-1 mb-2">
+                                <Heart className="text-blue-500 w-5 h-5" />
+                                Emotions
+                              </h4>
+                              <div className="flex flex-wrap gap-1">
+                                {selectedFile.aiAnalysis.emotions.map((emotion, idx) => (
+                                  <Badge key={idx} variant="outline" className="bg-gray-100 text-gray-800">
+                                    {emotion}
+                                  </Badge>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </>
+                    ) : (
+                      <div className="text-gray-500">No AI analysis available for this file.</div>
+                    )}
+                  </div>
+                )}
+                
+                {modalTab === 'meta' && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="bg-white border rounded-lg p-3">
+                      <h4 className="font-medium text-sm mb-3">Technical Information</h4>
+                      <div className="space-y-2 text-sm">
+                        {selectedFile.metadata.deviceInfo && (
+                          <div>
+                            <p className="font-medium text-xs text-gray-500">Device</p>
+                            <p className="text-gray-800">{selectedFile.metadata.deviceInfo}</p>
+                          </div>
+                        )}
+                        {selectedFile.metadata.timestamp && (
+                          <div>
+                            <p className="font-medium text-xs text-gray-500">Original Timestamp</p>
+                            <p className="text-gray-800">{selectedFile.metadata.timestamp.toLocaleString()}</p>
+                          </div>
+                        )}
+                        {selectedFile.metadata.coordinates && (
+                          <div>
+                            <p className="font-medium text-xs text-gray-500">GPS Coordinates</p>
+                            <p className="text-gray-800 font-mono">
+                              {selectedFile.metadata.coordinates.lat}, {selectedFile.metadata.coordinates.lng}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    
+                    <div className="bg-white border rounded-lg p-3">
+                      <h4 className="font-medium text-sm mb-3">Additional Metadata</h4>
+                      <div className="space-y-2 text-sm">
+                        {selectedFile.metadata.location && (
+                          <div>
+                            <p className="font-medium text-xs text-gray-500">Location</p>
+                            <p className="text-gray-800">{selectedFile.metadata.location}</p>
+                          </div>
+                        )}
+                        {selectedFile.metadata.networkInfo && (
+                          <div>
+                            <p className="font-medium text-xs text-gray-500">Network</p>
+                            <p className="text-gray-800">{selectedFile.metadata.networkInfo}</p>
+                          </div>
+                        )}
+                        {selectedFile.metadata.batteryLevel && (
+                          <div>
+                            <p className="font-medium text-xs text-gray-500">Battery Level</p>
+                            <p className="text-gray-800">{selectedFile.metadata.batteryLevel}</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+                
+                {modalTab === 'chain' && (
+                  <div className="space-y-3">
+                    {selectedFile.chainOfCustody.length > 0 ? (
+                      selectedFile.chainOfCustody.map((entry, idx) => (
+                        <div key={idx} className="bg-white border rounded-lg border-l-4 border-l-blue-500 p-4">
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <h4 className="font-medium text-sm">{entry.action}</h4>
+                              <p className="text-sm text-gray-500">by {entry.user}</p>
+                              {entry.details && (
+                                <p className="text-xs text-gray-500 mt-1">{entry.details}</p>
+                              )}
+                            </div>
+                            <div className="text-right">
+                              <p className="text-xs text-gray-500">{entry.timestamp.toLocaleDateString()}</p>
+                              <p className="text-xs text-gray-500">{entry.timestamp.toLocaleTimeString()}</p>
+                            </div>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="text-gray-500">No chain of custody records available.</div>
+                    )}
+                  </div>
+                )}
+                
+                <div className="mt-6 border-t pt-4 flex justify-between">
+                  <div className="flex gap-2">
+                    <Button 
+                      variant="outline" 
+                      onClick={() => handleDownload(selectedFile)}
+                    >
+                      <Download className="mr-2 h-4 w-4" />
+                      Download
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      onClick={() => handleShare(selectedFile)}
+                    >
+                      <Share2 className="mr-2 h-4 w-4" />
+                      Share
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
+      </Tabs>
 
     </div>
   );
